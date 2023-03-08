@@ -1,0 +1,112 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+		xmlns:ext="using:Avalonia.Extensions.Controls"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="500"
+		Width="800"
+		Height="500"
+		MinWidth="800"
+		MinHeight="450"
+        x:Class="FFmpegAvalonia.MainWindow"
+        Title="FFmpeg Avalonia">
+	<Grid Name="MoveTarget" ShowGridLines="False">
+		<Grid.ColumnDefinitions>
+			<ColumnDefinition Width="130"></ColumnDefinition>
+			<ColumnDefinition Width="2*"></ColumnDefinition>
+			<ColumnDefinition Width="130"></ColumnDefinition>
+		</Grid.ColumnDefinitions>
+		<Grid.RowDefinitions>
+			<RowDefinition Height="auto"></RowDefinition>
+			<RowDefinition Height="67"></RowDefinition>
+			<RowDefinition Height="67"></RowDefinition>
+			<RowDefinition Height="67"></RowDefinition>
+			<RowDefinition Height="67"></RowDefinition>
+			<RowDefinition Height="85"></RowDefinition>
+			<RowDefinition Height="*"></RowDefinition>
+		</Grid.RowDefinitions>
+		
+		<Menu Grid.Row="0" Grid.ColumnSpan="4" Background="AliceBlue">
+			<MenuItem Header="_File">
+				<MenuItem Header="_Open">
+					<MenuItem Name="SourceDirBrowseMenu" Header="_Source Dir" ToolTip.Tip="Open source directory" Click="Browse_Click"/>
+					<MenuItem Name="OutputDirBrowseMenu" Header="_Output Dir" ToolTip.Tip="Open output directory" Click="Browse_Click"/>
+				</MenuItem>
+				<Separator/>
+				<MenuItem Header="_Exit"/>
+			</MenuItem>
+			<MenuItem Header="_Edit">
+				<MenuItem Header="_Profiles"/>
+				<MenuItem Header="_Settings"/>
+			</MenuItem>
+		</Menu>
+		
+		<Label Content="Source Directory" Grid.Column="0" Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+		<TextBox Name="SourceDirBox" Watermark="Source" DragDrop.AllowDrop="True" Grid.Column="1" Grid.Row="1" Height="20"/>
+		<Button Name="SourceDirBrowseBtn" Content="Browse..." Grid.Column="2" Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Center" Click="Browse_Click"/>
+		
+		<Label Content="Output Directory" Grid.Column="0" Grid.Row="2" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+		<TextBox Name="OutputDirBox" Watermark="Output" DragDrop.AllowDrop="True" Grid.Column="1" Grid.Row="2" Height="20"/>
+		<Button Name="OutputDirBrowseBtn" Content="Browse..." Grid.Column="2" Grid.Row="2" VerticalAlignment="Center" HorizontalAlignment="Center" Click="Browse_Click"/>
+
+		<Label Content="Extension" Grid.Column="0" Grid.Row="3" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+		<TextBox Name="ExtBox" Watermark=".mkv, .mp4, .mxf" Grid.Column="1" Grid.Row="3" Height="20"/>
+
+		<Label Content="Profile" Grid.Column="0" Grid.Row="4" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+		<AutoCompleteBox Name="ProfileBox" IsTextCompletionEnabled="True" MinimumPrefixLength="0" Grid.Column="1" Grid.Row="4" VerticalAlignment="Center" HorizontalAlignment="Stretch"/>
+
+		<Grid Grid.Column="0" Grid.Row="5" Grid.ColumnSpan="3">
+			<Button Name="AddToQueueBtn" Content="Add to Queue" Click="AddToQueue_Click" VerticalAlignment="Top" HorizontalAlignment="Center"/>
+			<Button Name="StartQueueBtn" Content="Start Queue" Click="StartQueue_Click" VerticalAlignment="Bottom" HorizontalAlignment="Center" Margin="0, 0, 100, 16"/>
+			<Button Name="StopQueueBtn" Content="Stop Queue" Click="StopQueue_Click" IsEnabled="False" VerticalAlignment="Bottom" HorizontalAlignment="Center" Margin="100, 0, 0, 16">
+				<Button.ContextMenu>
+					<ContextMenu>
+						<MenuItem Header="Yeet"/>
+					</ContextMenu>
+				</Button.ContextMenu>
+			</Button>
+			<CheckBox Name="CopySourceCheck" Content="Copy source files to output" IsChecked="{Binding Path=CopySourceCheck}" VerticalAlignment="Top" HorizontalAlignment="Left" Margin="50, 5, 0, 0"/>
+			<CheckBox Name="AutoOverwriteCheck" Content="Overwrite files if prompted" IsChecked="{Binding Path=AutoOverwriteCheck}" VerticalAlignment="Center" HorizontalAlignment="Left" Margin="50, 15, 0, 0"/>
+
+			<!--<Button Content="Test" Click="Test_Click" HorizontalAlignment="Right"/>-->
+		</Grid>
+		
+		<ListView Name="ProgListView" HorizontalAlignment="Stretch" BorderThickness="0" Padding="0" Grid.Column="0" Grid.Row="6" Grid.ColumnSpan="3">
+			<ListView.ItemTemplate>
+				<DataTemplate>
+					<Border Margin="-12, -8, -12, -11" CornerRadius="0" BorderBrush="SkyBlue" Background="{Binding Path=Background}" BorderThickness="2" Padding="8">
+						<Border.ContextMenu>
+							<ContextMenu>
+								<MenuItem Tag="{Binding Path=Name}" Header="Select" Click="ListViewItem_Select"/>
+								<MenuItem Tag="{Binding Path=Name}" Header="Remove" Click="ListViewItem_Remove"/>
+							</ContextMenu>
+						</Border.ContextMenu>
+						<DockPanel Name="{Binding Path=Name}" ToolTip.Tip="yeet" Background="{Binding Path=Background}" VerticalAlignment="Stretch" HorizontalAlignment="Stretch" Tag="{Binding Path=Name}">
+							<CheckBox DockPanel.Dock="Left" IsChecked="{Binding Path=Check}" IsHitTestVisible="False" Focusable="False"/>
+							<Label DockPanel.Dock="Left" Content="{Binding Path=Label}" Margin="0, 0, 10, 0" VerticalContentAlignment="Center"/>
+							<Button Tag="{Binding Path=Name}" DockPanel.Dock="Right" HorizontalAlignment="Center" Margin="10, 0, 0, 0" Click="ListViewItem_Remove">
+								<Canvas Height="10"  Width="10">
+									<Path Stroke="Red" StrokeThickness="2">
+										<Path.Data>
+											<PathGeometry>
+												<PathGeometry.Figures>
+													<PathFigure StartPoint="0,0">
+														<LineSegment Point="10,10"/>
+													</PathFigure>
+													<PathFigure StartPoint="0,10">
+														<LineSegment Point="10,0"/>
+													</PathFigure>
+												</PathGeometry.Figures>
+											</PathGeometry>
+										</Path.Data>
+									</Path>
+								</Canvas>
+							</Button>
+							<ProgressBar Value="{Binding Path=Progress, Mode=TwoWay}" Maximum="1" Minimum="0"/>
+						</DockPanel>
+					</Border>
+				</DataTemplate>
+			</ListView.ItemTemplate>
+		</ListView>
+	</Grid>
+</Window>
