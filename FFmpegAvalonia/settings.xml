@@ -1,7 +1,0 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
-<Settings AppVersion="1.0.0.0">
-  <FFmpegPath>C:\FFmpeg</FFmpegPath>
-  <FrameCountMethod>GetFrameCountApproximate</FrameCountMethod>
-  <AutoOverwriteCheck>True</AutoOverwriteCheck>
-  <CopySourceCheck>False</CopySourceCheck>
-</Settings>
