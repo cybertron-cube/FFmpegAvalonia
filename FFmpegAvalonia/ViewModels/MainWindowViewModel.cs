@@ -6,9 +6,9 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace FFmpegAvalonia
+namespace FFmpegAvalonia.ViewModels
 {
-    public class ViewModel : ReactiveObject
+    public class MainWindowViewModel : ReactiveObject
     {
         private long _copySourceCheck = 0;
         public bool CopySourceCheck

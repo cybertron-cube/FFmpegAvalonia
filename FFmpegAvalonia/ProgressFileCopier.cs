@@ -10,6 +10,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Avalonia;
+using FFmpegAvalonia.ViewModels;
 
 namespace CyberFileUtils
 {
@@ -22,8 +23,8 @@ namespace CyberFileUtils
         private string OutputFilePath = String.Empty;
         //private int Total;
         private readonly IProgress<double> _UIProgress;
-        private readonly FFmpegAvalonia.ListViewData _Item;
-        private readonly FFmpegAvalonia.ViewModel _ViewModel;
+        private readonly ListViewData _Item;
+        private readonly MainWindowViewModel _ViewModel;
         public event ProgressChangeDelegate OnProgressChanged;
         public event Completedelegate OnComplete;
         private long _CancelFlag;
@@ -33,7 +34,7 @@ namespace CyberFileUtils
             set => Interlocked.Exchange(ref _CancelFlag, Convert.ToInt64(value));
         }
 
-        public ProgressFileCopier(IProgress<double> progress, FFmpegAvalonia.ListViewData item, FFmpegAvalonia.ViewModel viewModel)
+        public ProgressFileCopier(IProgress<double> progress, ListViewData item, MainWindowViewModel viewModel)
         {
             _UIProgress = progress;
             _Item = item;
@@ -170,9 +171,9 @@ namespace CyberFileUtils
             //Total = files.Count();
             this.OnProgressChanged += ProgressFileCopier_OnProgressChanged;
             this.OnComplete += ProgressFileCopier_OnComplete;
-            _Item.Description.CurrentFileNumber = 1;
             foreach (FileInfo file in files)
             {
+                _Item.Description.CurrentFileNumber += 1;
                 _Item.Label = $"{_Item.Name} ({_Item.Description.CurrentFileNumber}/{_Item.Description.FileCount})";
                 SourceFilePath = file.FullName;
                 OutputFilePath = Path.Combine(outputDir, file.Name);
@@ -193,7 +194,6 @@ namespace CyberFileUtils
         }
         private void ProgressFileCopier_OnComplete()
         {
-            _Item.Description.CurrentFileNumber += 1;
             _Item.Label = $"{_Item.Name} ({_Item.Description.CurrentFileNumber}/{_Item.Description.FileCount})";
         }
         private void ProgressFileCopier_OnProgressChanged(double Percentage)

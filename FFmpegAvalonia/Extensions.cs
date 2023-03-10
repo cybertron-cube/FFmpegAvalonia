@@ -17,7 +17,7 @@ namespace ExtensionMethods
             {
                 return false;
             }
-            for (int i = 0; i < needleLength; i++)
+            for (int i = 0; i <= needleLength; i++)
             {
                 if (haystack[haystackLength - i] != needle[needleLength - i])
                 {

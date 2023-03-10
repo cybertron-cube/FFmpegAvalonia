@@ -15,51 +15,38 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using ExtensionMethods;
+using System.Threading;
+using FFmpegAvalonia.ViewModels;
 
 namespace FFmpegAvalonia
 {
     class FFmpeg
     {
-        private FFmpegProcess _Process;
+        private FFmpegProcess _FFProcess;
         private readonly string _FFmpegPath;
-        private readonly bool _IsLinux;
-        private readonly ConcurrentDictionary<string, int> _FilesDict; //maybe not need to be concurrentdict
-        private readonly object _CancelQLock = new();
+        private readonly ConcurrentDictionary<string, int> _FilesDict; //maybe not need to be concurrentdict yet
         private int _LastFrame;
-        private bool _CancelQ;
+        private long _CancelQ = 0;
+        public bool CancelQ
+        {
+            get => Interlocked.Read(ref _CancelQ) == 1;
+            set => Interlocked.Exchange(ref _CancelQ, Convert.ToInt64(value));
+        }
         private int _TotalPrevFrameProgress;
         private int _TotalDirFrames;
         private IProgress<double>? _UIProgress;
-        private bool _IsDisposed;
-        private readonly object _IsDisposedLock = new();
-        private ViewModel? _ViewModel;
+        //private bool _IsDisposed;
+        private readonly object _DisposeLock = new();
+        private MainWindowViewModel? _ViewModel;
         public FFmpeg(string ffmpegdir)
         {
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-            {
-                _IsLinux = true;
-            }
             _FFmpegPath = ffmpegdir;
-            _Process = new FFmpegProcess
+            _FFProcess = new FFmpegProcess(_FFmpegPath) ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
             {
                 StartInfo = DefaultStartInfo(),
                 EnableRaisingEvents = true,
             };
             _FilesDict = new ConcurrentDictionary<string, int>();
-            //_CancelQ = false;
-            //_IsDisposed = false;
-            //_Process.Disposed += new EventHandler(Process_Disposed);
-        }
-        private class FFmpegProcess : Process
-        {
-            public void CleanStop(FFmpeg ff)
-            {
-                lock (ff._IsDisposedLock)
-                {
-                    ff._IsDisposed = true;
-                    this.Dispose();
-                }
-            }
         }
         private static ProcessStartInfo DefaultStartInfo()
         {
@@ -72,168 +59,166 @@ namespace FFmpegAvalonia
                 RedirectStandardError = true,
             };
         }
-        private void SetProcExeOS(string ffExeName)
-        {
-            if (_IsLinux)
-            {
-                _Process.StartInfo.FileName = Path.Combine(_FFmpegPath, ffExeName);
-            }
-            else
-            {
-                _Process.StartInfo.FileName = Path.Combine(_FFmpegPath, ffExeName + ".exe");
-            }
-        }
         private void NewFFProcess()
         {
-            lock (_IsDisposedLock)
+            _FFProcess = new FFmpegProcess(_FFmpegPath)
             {
-                if (_IsDisposed)  //(_Process.StartInfo != DefaultStartInfo()) //does not work as intended
-                {
-                    _Process = new FFmpegProcess
-                    {
-                        StartInfo = DefaultStartInfo(),
-                        EnableRaisingEvents = true
-                    };
-                    _IsDisposed = false;
-                    //_Process.Disposed += new EventHandler(Process_Disposed);  //Process_Disposed not firing???????
-                }
+                StartInfo = DefaultStartInfo(),
+                EnableRaisingEvents = true
+            };
+        }
+        public string GetFrameCountApproximate(string dir, string searchPattern, string args)
+        {
+            bool skipFrameRateCalc = false;
+            decimal frameRate = 0;
+            Regex re = new("(?:\\s+-r\\s+)(\\S+)");
+            Match match = re.Match(args);
+            if (match.Success)
+            {
+                skipFrameRateCalc = true;
+                Trace.TraceInformation("Skipping per file framerate calculation because -r arg exists");
+                string frameRateToParse = match.Groups[1].Value;
+                var split = frameRateToParse.Split("/");
+                decimal numerator = Decimal.Parse(split[0]);
+                decimal denominator = Decimal.Parse(split[1]);
+                frameRate = numerator / denominator;
+                Trace.TraceInformation("Framerate: " + frameRate);
             }
-        }
-        private void NewFFProcess(string ffExeName)
-        {
             NewFFProcess();
-            SetProcExeOS(ffExeName);
-        }
-        public string GetFrameCountApproximate(string dir, string searchPattern)
-        {
-            NewFFProcess("ffprobe");
-            Trace.TraceInformation(_Process.StartInfo.FileName);
             var dirInfo = new DirectoryInfo(dir);
             var files = dirInfo.EnumerateFiles(searchPattern);
             var sb = new StringBuilder();
-            foreach ( var file in files)
+            foreach (var file in files)
             {
                 sb.Append(file.FullName);
-                _Process.StartInfo.Arguments = $"-v 0 -of csv=p=0 -select_streams v:0 -show_entries stream=r_frame_rate \"{file.FullName}\"";
-                _Process.Start();
-                Trace.TraceInformation("Process ID: " + _Process.Id);
-                string output = _Process.StandardOutput.ReadToEnd().Trim();
-                decimal frameRate = Decimal.Parse(output.Split(@"/")[0]) / Decimal.Parse(output.Split(@"/")[1]);
 
-                Trace.TraceInformation("Framerate: " + frameRate);
-                _Process.WaitForExit();
+                if (!skipFrameRateCalc)
+                {
+                    _FFProcess.StartProbe($"-v 0 -of csv=p=0 -select_streams v:0 -show_entries stream=r_frame_rate \"{file.FullName}\"");
+                    string output = _FFProcess.StandardOutput.ReadToEnd().Trim();
+                    frameRate = Decimal.Parse(output.Split(@"/")[0]) / Decimal.Parse(output.Split(@"/")[1]);
 
-                Trace.TraceInformation("Process Exit Code: " + _Process.ExitCode);
+                    Trace.TraceInformation("Framerate: " + frameRate);
+                    _FFProcess.WaitForExit();
 
-                _Process.StartInfo.Arguments = $"-v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 \"{file.FullName}\"";
-                _Process.Start();
-                Trace.TraceInformation("Process ID: " + _Process.Id);
-                decimal totalSeconds = Decimal.Parse(_Process.StandardOutput.ReadToEnd().Trim());
+                    Trace.TraceInformation("Process Exit Code: " + _FFProcess.ExitCode);
+                }
+
+                _FFProcess.StartProbe($"-v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 \"{file.FullName}\"");
+                decimal totalSeconds = Decimal.Parse(_FFProcess.StandardOutput.ReadToEnd().Trim());
 
                 Trace.TraceInformation("Total Seconds: " + totalSeconds);
-                _Process.WaitForExit();
+                _FFProcess.WaitForExit();
 
-                Trace.TraceInformation("Process Exit Code: " + _Process.ExitCode);
+                Trace.TraceInformation("Process Exit Code: " + _FFProcess.ExitCode);
 
                 decimal totalFrames = frameRate * totalSeconds;
                 _FilesDict.TryAdd(file.FullName, (int)totalFrames); //rounds down
                 _TotalDirFrames += (int)totalFrames;
                 sb.Append(" -- " + (int)totalFrames + " -- " + totalFrames + System.Environment.NewLine);
             }
-            _Process.CleanStop(this);
+            _FFProcess.Dispose();
             return sb.ToString();
         }
         public string GetFrameCountFromPackets(string dir, string searchPattern) 
         {
-            NewFFProcess("ffprobe");
+            NewFFProcess();
             var dirInfo = new DirectoryInfo(dir);
             var files = dirInfo.EnumerateFiles(searchPattern);
             var sb = new StringBuilder();
             foreach (var file in files)
             {
                 sb.Append(file.FullName);
-                _Process.StartInfo.Arguments = $"-v error -select_streams v:0 -count_packets -show_entries stream=nb_read_packets \"{file.FullName}\"";
-                _Process.Start();
-                int totalFrames = Int32.Parse(_Process.StandardOutput.ReadToEnd().Split("=")[1].Split("[")[0].Trim());
-                _Process.WaitForExit();
+                _FFProcess.StartInfo.Arguments = $"-v error -select_streams v:0 -count_packets -show_entries stream=nb_read_packets \"{file.FullName}\"";
+                _FFProcess.Start();
+                int totalFrames = Int32.Parse(_FFProcess.StandardOutput.ReadToEnd().Split("=")[1].Split("[")[0].Trim());
+                _FFProcess.WaitForExit();
                 _FilesDict.TryAdd(file.FullName, totalFrames);
                 sb.Append(" -- " + totalFrames + System.Environment.NewLine);
             }
-            _Process.CleanStop(this);
+            _FFProcess.Dispose();
             return sb.ToString();
         }
         public string GetFrameCount(string dir, string searchPattern)
         {
-            NewFFProcess("ffprobe");
+            NewFFProcess();
             var dirInfo = new DirectoryInfo(dir);
             var files = dirInfo.EnumerateFiles(searchPattern);
             var sb = new StringBuilder();
             foreach (var file in files)
             {
                 sb.Append(file.FullName);
-                _Process.StartInfo.Arguments = $"-v error -select_streams v:0 -count_frames -show_entries stream=nb_read_frames \"{file.FullName}\"";
-                _Process.Start();
-                int totalFrames = Int32.Parse(_Process.StandardOutput.ReadToEnd().Split("=")[1].Split("[")[0].Trim());
-                _Process.WaitForExit();
+                _FFProcess.StartInfo.Arguments = $"-v error -select_streams v:0 -count_frames -show_entries stream=nb_read_frames \"{file.FullName}\"";
+                _FFProcess.Start();
+                int totalFrames = Int32.Parse(_FFProcess.StandardOutput.ReadToEnd().Split("=")[1].Split("[")[0].Trim());
+                _FFProcess.WaitForExit();
                 _FilesDict.TryAdd(file.FullName, totalFrames);
                 sb.Append(" -- " + totalFrames + System.Environment.NewLine);
             }
-            _Process.CleanStop(this);
+            _FFProcess.Dispose();
             return sb.ToString();
         }
-        public async Task<string> RunProfile(string args, string outputDir, string ext, IProgress<double> progress, ViewModel viewModel)
+        public async Task<string> RunProfile(string args, string outputDir, string ext, IProgress<double> progress, MainWindowViewModel viewModel)
         {
             //Start out having progress bar show prog of entire dir
             //Progress would be current progress plus the sum of the files already done
             _ViewModel = viewModel;
             _UIProgress = progress;
-            NewFFProcess("ffmpeg");
-            Trace.TraceInformation(_Process.StartInfo.FileName);
-            _Process.OutputDataReceived += new DataReceivedEventHandler(StdOutHandler);
+            //NewFFProcess("ffmpeg");
+            //Trace.TraceInformation(_FFProcess.StartInfo.FileName);
+            //_FFProcess.OutputDataReceived += new DataReceivedEventHandler(StdOutHandler);
+
             foreach (var filePath in _FilesDict.Keys)
             {
+                NewFFProcess();
+                _FFProcess.OutputDataReceived += new DataReceivedEventHandler(StdOutHandler);
                 //Path.GetFileName(filePath);
-                Trace.TraceInformation($"-i \"{filePath}\" -progress pipe:1 {args} \"{Path.Combine(outputDir, Path.GetFileNameWithoutExtension(filePath) + ext)}\"");
-                _Process.StartInfo.Arguments = $"-i \"{filePath}\" -progress pipe:1 {args} \"{Path.Combine(outputDir, Path.GetFileNameWithoutExtension(filePath) + ext)}\"";
-                _Process.Start();
-                Trace.TraceInformation("Process ID: " + _Process.Id);
-                _Process.BeginOutputReadLine();
-                await ReadStdErr();
-                await _Process.WaitForExitAsync();
-                Trace.TraceInformation("Process Exit Code: " + _Process.ExitCode);
-                lock (_CancelQLock)
+                if (CancelQ)
                 {
-                    if (_CancelQ)
-                    {
-                        _CancelQ = false;
-                        _Process.CleanStop(this);
-                        return filePath;                 //returns file name if canceled -- implememnt in ui
-                    }
+                    _FFProcess.Dispose();
+                    CancelQ = false;
+                    return filePath;
+                }
+                _FFProcess.StartMpeg($"-i \"{filePath}\" -progress pipe:1 {args} \"{Path.Combine(outputDir, Path.GetFileNameWithoutExtension(filePath) + ext)}\"");
+                _FFProcess.BeginOutputReadLine();
+                await ReadStdErr();
+                await _FFProcess.WaitForExitAsync();
+                Trace.TraceInformation("Process Exit Code: " + _FFProcess.ExitCode);
+                if (CancelQ)
+                {
+                    _FFProcess.Dispose();
+                    CancelQ = false;
+                    return filePath;
                 }
                 _TotalPrevFrameProgress += _FilesDict[filePath];
+                lock (_DisposeLock)
+                {
+                    _FFProcess.Dispose();
+                }
             }
-            _Process.CleanStop(this);
+            //_FFProcess.Dispose();
             return "0";
         }
         public void StopProfile()
         {
-            lock (_CancelQLock)
+            CancelQ = true;
+            lock (_DisposeLock)
             {
-                _CancelQ = true;
-                _Process.Refresh();
-                lock (_IsDisposedLock)
+                try
                 {
-                    if (!_Process.HasExited)
+                    _FFProcess.Refresh();
+                    if (!_FFProcess.HasExited)
                     {
-                        _Process.StandardInput.WriteLine("q");
-                        _Process.WaitForExit();
-                        _Process.Dispose();
+                        _FFProcess.StandardInput.WriteLine("q");
                     }
-                    else if (!_IsDisposed)
-                    {
-                        _Process.Dispose();
-                        _IsDisposed = true;
-                    }
+                }
+                catch (ObjectDisposedException)
+                {
+                    return;
+                }
+                catch (InvalidOperationException)
+                {
+                    return;
                 }
             }
         }
@@ -287,7 +272,7 @@ namespace FFmpegAvalonia
         }
         private async Task ReadStdErr()
         {
-            var sr = _Process.StandardError;
+            var sr = _FFProcess.StandardError;
             var sb = new StringBuilder();
             while (!sr.EndOfStream)
             {
@@ -298,12 +283,6 @@ namespace FFmpegAvalonia
                     var line = sb.ToString();
                     sb = new StringBuilder();
                     Trace.TraceInformation(line);
-                    /*if (line.Contains("frame="))
-                    {
-                        _lastFrame = Int32.Parse(Regex.Match(line, "(?<=frame=\\s+)\\d+").Value);
-                        //Trace.TraceInformation(_lastFrame);
-                        UIProgress.Report((_lastFrame + _totalPrevFrameProgress) / _totalDirFrames);
-                    }*/
                 }
                 else if (sb.EndsWith("already exists. Overwrite? [y/N] "))
                 {
@@ -311,7 +290,7 @@ namespace FFmpegAvalonia
                     var line = sb.ToString();
                     if (_ViewModel!.AutoOverwriteCheck)
                     {
-                        await _Process.StandardInput.WriteLineAsync("y");
+                        await _FFProcess.StandardInput.WriteLineAsync("y");
                     }
                     else
                     {
@@ -328,11 +307,11 @@ namespace FFmpegAvalonia
                             var result = await msgBox.ShowDialog(app.MainWindow);
                             if (result == ButtonResult.Yes)
                             {
-                                await _Process.StandardInput.WriteLineAsync("y");
+                                await _FFProcess.StandardInput.WriteLineAsync("y");
                             }
                             else
                             {
-                                await _Process.StandardInput.WriteLineAsync("n");
+                                await _FFProcess.StandardInput.WriteLineAsync("n");
                             }
                         }, DispatcherPriority.MaxValue);
                         sb = new StringBuilder();

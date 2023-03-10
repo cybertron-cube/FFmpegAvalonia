@@ -1,35 +1,35 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Profiles AppVersion="1.0.0.0">
   <Profile Name="hd-mp4-high">
-    <Arguments>-y -vcodec libx264 -b:v 2200000  -g 12 -bf 3 -b_strategy 1 -coder 1 -qmin 10 -qmax 51 -sc_threshold 40 -flags +loop  -me_range 16 -me_method hex -subq 5 -i_qfactor 0.71 -qcomp 0.6 -qdiff 4  -pix_fmt yuv420p  -s 1920x1080 -acodec aac -ar 48000 -ab 224k</Arguments>
+    <Arguments>-y -vcodec libx264 -b:v 20110k -g 12 -bf 3 -b_strategy 1 -coder 1 -qmin 10 -qmax 51 -sc_threshold 40 -flags +loop  -me_range 16 -me_method hex -subq 5 -i_qfactor 0.71 -qcomp 0.6 -qdiff 4  -pix_fmt yuv420p  -s 1920x1080 -acodec aac -ar 48000 -ab 224k</Arguments>
     <OutputExtension>.mp4</OutputExtension>
   </Profile>
   <Profile Name="hd-mp4-low">
-    <Arguments>-y -vcodec libx264 -b:v 550000  -g 12 -bf 3 -b_strategy 1 -coder 1 -qmin 10 -qmax 51 -sc_threshold 40 -flags +loop  -me_range 16 -me_method hex -subq 5 -i_qfactor 0.71 -qcomp 0.6 -qdiff 4  -pix_fmt yuv420p  -s 1920x1080 -acodec aac -ar 48000 -ab 224k</Arguments>
+    <Arguments>-y -vcodec libx264 -b:v 5110k -g 12 -bf 3 -b_strategy 1 -coder 1 -qmin 10 -qmax 51 -sc_threshold 40 -flags +loop  -me_range 16 -me_method hex -subq 5 -i_qfactor 0.71 -qcomp 0.6 -qdiff 4  -pix_fmt yuv420p  -s 1920x1080 -acodec aac -ar 48000 -ab 224k</Arguments>
     <OutputExtension>.mp4</OutputExtension>
   </Profile>
   <Profile Name="hd-mp4-med-aspect16x9">
-    <Arguments>-y -vcodec libx264 -b:v 1100000  -g 12 -bf 3 -b_strategy 1 -coder 1 -qmin 10 -qmax 51 -sc_threshold 40 -flags +loop  -me_range 16 -me_method hex -subq 5 -i_qfactor 0.71 -qcomp 0.6 -qdiff 4  -pix_fmt yuv420p  -vf "yadif" -aspect 16:9 -s 1920x1080  -r 30000/1001 -acodec aac -ar 48000 -ab 224k</Arguments>
+    <Arguments>-y -vcodec libx264 -b:v 10110k -g 12 -bf 3 -b_strategy 1 -coder 1 -qmin 10 -qmax 51 -sc_threshold 40 -flags +loop  -me_range 16 -me_method hex -subq 5 -i_qfactor 0.71 -qcomp 0.6 -qdiff 4  -pix_fmt yuv420p  -vf "yadif" -aspect 16:9 -s 1920x1080  -r 30000/1001 -acodec aac -ar 48000 -ab 224k</Arguments>
     <OutputExtension>.mp4</OutputExtension>
   </Profile>
   <Profile Name="hd-mp4-med">
-    <Arguments>-y -vcodec libx264 -b:v 1100000  -g 12 -bf 3 -b_strategy 1 -coder 1 -qmin 10 -qmax 51 -sc_threshold 40 -flags +loop  -me_range 16 -me_method hex -subq 5 -i_qfactor 0.71 -qcomp 0.6 -qdiff 4  -pix_fmt yuv420p  -s 1920x1080 -acodec aac -ar 48000 -ab 224k</Arguments>
+    <Arguments>-y -vcodec libx264 -b:v 10110k -g 12 -bf 3 -b_strategy 1 -coder 1 -qmin 10 -qmax 51 -sc_threshold 40 -flags +loop  -me_range 16 -me_method hex -subq 5 -i_qfactor 0.71 -qcomp 0.6 -qdiff 4  -pix_fmt yuv420p  -s 1920x1080 -acodec aac -ar 48000 -ab 224k</Arguments>
     <OutputExtension>.mp4</OutputExtension>
   </Profile>
   <Profile Name="hd-mp4-med_720p">
-    <Arguments>-y -vcodec libx264 -b:v 1100000  -g 12 -bf 3 -b_strategy 1 -coder 1 -qmin 10 -qmax 51 -sc_threshold 40 -flags +loop  -me_range 16 -me_method hex -subq 5 -i_qfactor 0.71 -qcomp 0.6 -qdiff 4  -pix_fmt yuv420p -acodec libfdk_aac -ar 48000 -ab 224k</Arguments>
+    <Arguments>-y -vcodec libx264 -b:v 10110k -g 12 -bf 3 -b_strategy 1 -coder 1 -qmin 10 -qmax 51 -sc_threshold 40 -flags +loop  -me_range 16 -me_method hex -subq 5 -i_qfactor 0.71 -qcomp 0.6 -qdiff 4  -pix_fmt yuv420p -acodec libfdk_aac -ar 48000 -ab 224k</Arguments>
     <OutputExtension>.mp4</OutputExtension>
   </Profile>
   <Profile Name="hd_720p-mp4-high">
-    <Arguments>-y -vcodec libx264 -b:v 2200000  -g 12 -bf 3 -b_strategy 1 -coder 1 -qmin 10 -qmax 51 -sc_threshold 40 -flags +loop  -me_range 16 -me_method hex -subq 5 -i_qfactor 0.71 -qcomp 0.6 -qdiff 4  -pix_fmt yuv420p  -s 1280x720 -aspect 16:9 -acodec aac -ar 48000 -ab 224k</Arguments>
+    <Arguments>-y -vcodec libx264 -b:v 20110k -g 12 -bf 3 -b_strategy 1 -coder 1 -qmin 10 -qmax 51 -sc_threshold 40 -flags +loop  -me_range 16 -me_method hex -subq 5 -i_qfactor 0.71 -qcomp 0.6 -qdiff 4  -pix_fmt yuv420p  -s 1280x720 -aspect 16:9 -acodec aac -ar 48000 -ab 224k</Arguments>
     <OutputExtension>.mp4</OutputExtension>
   </Profile>
   <Profile Name="hd_720p-mp4-low">
-    <Arguments>-y -vcodec libx264 -b:v 550000  -g 12 -bf 3 -b_strategy 1 -coder 1 -qmin 10 -qmax 51 -sc_threshold 40 -flags +loop  -me_range 16 -me_method hex -subq 5 -i_qfactor 0.71 -qcomp 0.6 -qdiff 4  -pix_fmt yuv420p  -s 1280x720 -aspect 16:9  -acodec aac -ar 48000 -ab 224k</Arguments>
+    <Arguments>-y -vcodec libx264 -b:v 5110k -g 12 -bf 3 -b_strategy 1 -coder 1 -qmin 10 -qmax 51 -sc_threshold 40 -flags +loop  -me_range 16 -me_method hex -subq 5 -i_qfactor 0.71 -qcomp 0.6 -qdiff 4  -pix_fmt yuv420p  -s 1280x720 -aspect 16:9  -acodec aac -ar 48000 -ab 224k</Arguments>
     <OutputExtension>.mp4</OutputExtension>
   </Profile>
   <Profile Name="hd_720p-mp4-med">
-    <Arguments>-y -vcodec libx264 -b:v 1100000  -g 12 -bf 3 -b_strategy 1 -coder 1 -qmin 10 -qmax 51 -sc_threshold 40 -flags +loop  -me_range 16 -me_method hex -subq 5 -i_qfactor 0.71 -qcomp 0.6 -qdiff 4  -pix_fmt yuv420p  -s 1280x720 -aspect 16:9 -acodec libfdk_aac -ar 48000 -ab 224k</Arguments>
+    <Arguments>-y -vcodec libx264 -b:v 10110k -g 12 -bf 3 -b_strategy 1 -coder 1 -qmin 10 -qmax 51 -sc_threshold 40 -flags +loop  -me_range 16 -me_method hex -subq 5 -i_qfactor 0.71 -qcomp 0.6 -qdiff 4  -pix_fmt yuv420p  -s 1280x720 -aspect 16:9 -acodec libfdk_aac -ar 48000 -ab 224k</Arguments>
     <OutputExtension>.mp4</OutputExtension>
   </Profile>
   <Profile Name="od_fix_unc-avi-10">
@@ -37,7 +37,7 @@
     <OutputExtension>.avi</OutputExtension>
   </Profile>
   <Profile Name="PAL_sd-mp4-med">
-    <Arguments>-vf "yadif" -aspect 4:3 -vcodec libx264 -b:v 440000  -g 12 -bf 3 -b_strategy 1 -coder 1 -qmin 10 -qmax 51 -sc_threshold 40 -me_range 16 -me_method hex -subq 5 -i_qfactor 0.71 -qcomp 0.6 -qdiff 4 -r 25 -pix_fmt yuv420p -s 720x576 -acodec aac -ar 44100 -b:a 192k</Arguments>
+    <Arguments>-vf "yadif" -aspect 4:3 -vcodec libx264 -b:v 4110k -g 12 -bf 3 -b_strategy 1 -coder 1 -qmin 10 -qmax 51 -sc_threshold 40 -me_range 16 -me_method hex -subq 5 -i_qfactor 0.71 -qcomp 0.6 -qdiff 4 -r 25 -pix_fmt yuv420p -s 720x576 -acodec aac -ar 44100 -b:a 192k</Arguments>
     <OutputExtension>.mp4</OutputExtension>
   </Profile>
   <Profile Name="sd-dv25-avi">
@@ -85,19 +85,19 @@
     <OutputExtension>.mxf</OutputExtension>
   </Profile>
   <Profile Name="sd-mp4-high">
-    <Arguments>-vf "yadif" -aspect 4:3 -vcodec libx264 -b:v 880000  -g 12 -bf 3 -b_strategy 1 -coder 1 -qmin 10 -qmax 51 -sc_threshold 40 -me_range 16 -me_method hex -subq 5 -i_qfactor 0.71 -qcomp 0.6 -qdiff 4 -r 30000/1001 -pix_fmt yuv420p -s 720x480 -acodec aac -ar 44100 -b:a 256k</Arguments>
+    <Arguments>-vf "yadif" -aspect 4:3 -vcodec libx264 -b:v 8110k -g 12 -bf 3 -b_strategy 1 -coder 1 -qmin 10 -qmax 51 -sc_threshold 40 -me_range 16 -me_method hex -subq 5 -i_qfactor 0.71 -qcomp 0.6 -qdiff 4 -r 30000/1001 -pix_fmt yuv420p -s 720x480 -acodec aac -ar 44100 -b:a 256k</Arguments>
     <OutputExtension>.mp4</OutputExtension>
   </Profile>
   <Profile Name="sd-mp4-low-3mbps">
-    <Arguments>-vf "yadif" -aspect 4:3 -vcodec libx264 -b:v 330000  -g 12 -bf 3 -b_strategy 1 -coder 1 -qmin 10 -qmax 51 -sc_threshold 40 -me_range 16 -me_method hex -subq 5 -i_qfactor 0.71 -qcomp 0.6 -qdiff 4 -r 30000/1001 -pix_fmt yuv420p -s 720x480 -acodec aac -ar 48000 -b:a 128k</Arguments>
+    <Arguments>-vf "yadif" -aspect 4:3 -vcodec libx264 -b:v 3110k -g 12 -bf 3 -b_strategy 1 -coder 1 -qmin 10 -qmax 51 -sc_threshold 40 -me_range 16 -me_method hex -subq 5 -i_qfactor 0.71 -qcomp 0.6 -qdiff 4 -r 30000/1001 -pix_fmt yuv420p -s 720x480 -acodec aac -ar 48000 -b:a 128k</Arguments>
     <OutputExtension>.mp4</OutputExtension>
   </Profile>
   <Profile Name="sd-mp4-low">
-    <Arguments>-vf "yadif" -aspect 4:3 -vcodec libx264 -b:v 220000  -g 12 -bf 3 -b_strategy 1 -coder 1 -qmin 10 -qmax 51 -sc_threshold 40 -me_range 16 -me_method hex -subq 5 -i_qfactor 0.71 -qcomp 0.6 -qdiff 4 -r 30000/1001 -pix_fmt yuv420p -s 720x480 -acodec aac -ar 44100 -b:a 128k</Arguments>
+    <Arguments>-vf "yadif" -aspect 4:3 -vcodec libx264 -b:v 2110k -g 12 -bf 3 -b_strategy 1 -coder 1 -qmin 10 -qmax 51 -sc_threshold 40 -me_range 16 -me_method hex -subq 5 -i_qfactor 0.71 -qcomp 0.6 -qdiff 4 -r 30000/1001 -pix_fmt yuv420p -s 720x480 -acodec aac -ar 44100 -b:a 128k</Arguments>
     <OutputExtension>.mp4</OutputExtension>
   </Profile>
   <Profile Name="sd-mp4-med">
-    <Arguments>-vf "yadif" -aspect 4:3 -vcodec libx264 -b:v 440000  -g 12 -bf 3 -b_strategy 1 -coder 1 -qmin 10 -qmax 51 -sc_threshold 40 -me_range 16 -me_method hex -subq 5 -i_qfactor 0.71 -qcomp 0.6 -qdiff 4 -r 30000/1001 -pix_fmt yuv420p -s 720x480 -acodec aac -ar 44100 -b:a 192k</Arguments>
+    <Arguments>-vf "yadif" -aspect 4:3 -vcodec libx264 -b:v 4110k -g 12 -bf 3 -b_strategy 1 -coder 1 -qmin 10 -qmax 51 -sc_threshold 40 -me_range 16 -me_method hex -subq 5 -i_qfactor 0.71 -qcomp 0.6 -qdiff 4 -r 30000/1001 -pix_fmt yuv420p -s 720x480 -acodec aac -ar 44100 -b:a 192k</Arguments>
     <OutputExtension>.mp4</OutputExtension>
   </Profile>
   <Profile Name="sd-ProresHQ-mov">

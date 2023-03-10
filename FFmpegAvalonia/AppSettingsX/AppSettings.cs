@@ -13,7 +13,7 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 
-namespace FFmpegAvalonia
+namespace FFmpegAvalonia.AppSettingsX
 {
     public class AppSettings
     {
@@ -126,7 +126,7 @@ namespace FFmpegAvalonia
         {
             if (_IsLinux)
             {
-                string pathOne = @"/home/linuxbrew/.linuxbrew/opt/ffmpeg";
+                string pathOne = @"/usr/bin/ffmpeg";
                 if (File.Exists(pathOne))
                 {
                     Settings.FFmpegPath = Path.GetDirectoryName(pathOne);
@@ -149,8 +149,8 @@ namespace FFmpegAvalonia
                 string profileName = Path.GetFileNameWithoutExtension(file.FullName);
                 string args = "";
                 string ext = "";
-                int mo = 0;
-                int dr = 0;
+                string mo = "";
+                string dr = "";
                 //extract extension, datarate, arguments, and name of profile
                 var lines = File.ReadAllLines(file.FullName);
                 Trace.TraceInformation("name: " + profileName);
@@ -158,15 +158,13 @@ namespace FFmpegAvalonia
                 {
                     if (line.StartsWith("mo="))
                     {
-                        string moStr = line.Split('=')[1].Trim();
-                        moStr = moStr.Replace("k", "000");
-                        mo = Int32.Parse(moStr);
+                        mo = line.Split('=')[1].Trim();
                     }
                     if (line.StartsWith("dr="))
                     {
                         if (line.Contains("$mo"))
                         {
-                            if (mo == 0)
+                            if (mo == "")
                             {
                                 Trace.TraceInformation("ERROR: " + line);
                                 Trace.TraceInformation("ERROR: " + file.FullName);
@@ -174,13 +172,12 @@ namespace FFmpegAvalonia
                             }
                             else
                             {
-                                dr *= mo;
+                                dr += mo;
                             }
                         }
                         else
                         {
-                            string drStr = line.Split("=")[1].Trim();
-                            dr = Int32.Parse(drStr);
+                            dr = line.Split("=")[1].Trim();
                         }
                     }
                     if (line.StartsWith("ffmpeg"))
@@ -199,7 +196,7 @@ namespace FFmpegAvalonia
                         //
                         if (line.Contains(@"$dr"))
                         {
-                            if (dr == 0)
+                            if (dr == "")
                             {
                                 Trace.TraceInformation("ERROR: " + line);
                                 Trace.TraceInformation("ERROR: " + file.FullName);
@@ -209,7 +206,7 @@ namespace FFmpegAvalonia
                             {
                                 Regex reg = new("(?:ffmpeg.*\\$etn\\s+)(?<args1>(?:(?!\\s+\\$).)*).*(?<dr>\\$dr)(?<args2>(?:(?!\\s+\\$).)*).*(?<ext>\\..*)");
                                 Match match = reg.Match(line);
-                                args = $"{match.Groups["args1"].Value.Trim()} {dr/*match.Groups["dr"].Value this returns $dr so use calculated datarate instead*/} {match.Groups["args2"].Value.Trim()}";
+                                args = $"{match.Groups["args1"].Value.Trim()} {dr} {match.Groups["args2"].Value.Trim()}";
                                 ext = match.Groups["ext"].Value;
                             }
                         }
@@ -226,7 +223,7 @@ namespace FFmpegAvalonia
                 Trace.TraceInformation("ext: " + ext);
                 Trace.TraceInformation("mo: " + mo);
                 Trace.TraceInformation("dr: " + dr);
-                if (!String.IsNullOrEmpty(args) && !String.IsNullOrEmpty(ext) && !String.IsNullOrEmpty(profileName))
+                if (!string.IsNullOrEmpty(args) && !string.IsNullOrEmpty(ext) && !string.IsNullOrEmpty(profileName))
                 {
                     Profiles.Add(profileName, new Profile() { Name = profileName, Arguments = args, OutputExtension = ext });
                 }

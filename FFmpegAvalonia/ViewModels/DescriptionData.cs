@@ -4,8 +4,9 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using FFmpegAvalonia.AppSettingsX;
 
-namespace FFmpegAvalonia
+namespace FFmpegAvalonia.ViewModels
 {
     internal class DescriptionData
     {
@@ -20,7 +21,7 @@ namespace FFmpegAvalonia
             {
                 lock (fieldLock)
                 {
-                    return _CurrentFileName; 
+                    return _CurrentFileName;
                 }
             }
             set
@@ -31,7 +32,7 @@ namespace FFmpegAvalonia
                 }
             }
         }
-        private long _CurrentFileNumber;
+        private long _CurrentFileNumber = 0;
         public long CurrentFileNumber
         {
             get

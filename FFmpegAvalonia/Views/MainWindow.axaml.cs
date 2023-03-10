@@ -28,12 +28,17 @@ using ExtensionMethods;
 using PCLUntils.IEnumerables;
 using Avalonia.Media;
 using System.Reflection;
+using MessageBox.Avalonia.DTO;
+using System.Linq;
+using System.Text;
+using FFmpegAvalonia.ViewModels;
+using FFmpegAvalonia.AppSettingsX;
+using Avalonia.VisualTree;
 
 namespace FFmpegAvalonia
 {
     public partial class MainWindow : Window
     {
-        private TextBox lastBox;
         private FFmpeg? FFmp;
         private ProgressFileCopier? Copier;
         private ListViewData? CurrentItemInProgress;
@@ -41,7 +46,7 @@ namespace FFmpegAvalonia
         private readonly ObservableCollection<ListViewData> ListViewItems = new();
         private readonly ObservableCollection<string> ProfileBoxItems = new();
         public AppSettings AppSettings = new();
-        public ViewModel ViewModel = new();
+        public MainWindowViewModel ViewModel = new();
 
         public MainWindow()
         {
@@ -51,43 +56,58 @@ namespace FFmpegAvalonia
             var listener = new ConsoleTraceListener()
             {
                 Writer = textWriter.Writer,
-                TraceOutputOptions = TraceOptions.Timestamp | TraceOptions.DateTime | TraceOptions.Callstack, ///MAYBE USE THIS WITH PROGRESS ENUM???
+                TraceOutputOptions = TraceOptions.DateTime// | TraceOptions.Timestamp | TraceOptions.Callstack, ///MAYBE USE THIS WITH PROGRESS ENUM???
             };
             Trace.Listeners.Add(listener);
             Trace.AutoFlush = true;
             InitializeComponent();
             AddHandler(DragDrop.DropEvent, Drop!);
-            //AddHandler(DragDrop.DragOverEvent, DragOver);
+            AddHandler(DragDrop.DragOverEvent, DragOver!);
             ProgListView.Items = ListViewItems;
-            lastBox = SourceDirBox;
-            SourceDirBox.GotFocus += SourceFocused!;
-            OutputDirBox.GotFocus += OutputFocused!;
-            CopySourceCheck.Checked += CopySourceCheck_Checked;
-            CopySourceCheck.Unchecked += CopySourceCheck_Unchecked;
-            Closed += MainWindow_Closed;
-            Opened += MainWindow_Opened;
             DataContext = ViewModel;
             Title = "CyberAva ffmpeg " + Assembly.GetExecutingAssembly().GetName().Version!.ToString();
         }
-        private void InitializeComponent()
+        private void DragOver(object sender, DragEventArgs e)
         {
-            Trace.TraceInformation("InitializeComponent");
-            AvaloniaXamlLoader.Load(this);
+            Debug.WriteLine("DragOver");
 
-            SourceDirBox = this.Find<TextBox>("SourceDirBox");
-            OutputDirBox = this.Find<TextBox>("OutputDirBox");
-            ExtBox = this.Find<TextBox>("ExtBox");
-            AddToQueueBtn = this.Find<Button>("AddToQueueBtn");
-            StartQueueBtn = this.Find<Button>("StartQueueBtn");
-            StopQueueBtn = this.Find<Button>("StopQueueBtn");
-            ProgListView = this.Find<ListView>("ProgListView");
-            ProfileBox = this.Find<AutoCompleteBox>("ProfileBox");
-            CopySourceCheck = this.Find<CheckBox>("CopySourceCheck");
-            AutoOverwriteCheck = this.Find<CheckBox>("AutoOverwriteCheck");
+            Point pt = e.GetPosition((IVisual)sender);
+            var test = SourceDirBox.HitTestCustom(pt);
+            Debug.WriteLine(test);
+
+            // Only allow Copy or Link as Drop Operations.
+            e.DragEffects = e.DragEffects & (DragDropEffects.Copy | DragDropEffects.Link);
+
+            // Only allow if the dragged data contains text or filenames.
+            if (!e.Data.Contains(DataFormats.Text) && !e.Data.Contains(DataFormats.FileNames))
+                e.DragEffects = DragDropEffects.None;
+        }
+        private void Drop(object sender, DragEventArgs e)
+        {
+            Debug.WriteLine("Drop");
+            Point pt = e.GetPosition((IVisual)sender);
+            TextBox textBox;
+            IInputElement inputElement = MainGrid.InputHitTest(pt)!;
+            try
+            {
+                TextBlock textBlock = (TextBlock)inputElement.GetVisualDescendants().Where(x => x is TextBlock).Single();
+                //TextBlock textBlock = (TextBlock)inputElement.GetVisualChildren().ToList()[0].GetVisualChildren().ToList()[0];
+                textBox = (TextBox)textBlock.TemplatedParent!;
+            }
+            catch (Exception ex)
+            {
+                Trace.TraceError(ex.Message);
+                return;
+            }
+            if (e.Data.Contains(DataFormats.Text))
+                textBox.Text = e.Data.GetText();
+            else if (e.Data.Contains(DataFormats.FileNames) && e.Data.GetFileNames()!.Count() == 1)
+                textBox.Text = string.Join(Environment.NewLine, e.Data.GetFileNames()!);
         }
         private async void MainWindow_Opened(object? sender, EventArgs e)
         {
-            if (AppSettings.Settings.FFmpegPath is null)
+            Trace.TraceInformation("MainWindow Opened");
+            if (AppSettings.Settings.FFmpegPath == String.Empty)
             {
                 var msgBoxError = MessageBox.Avalonia.MessageBoxManager.GetMessageBoxStandardWindow("Help!", $"We could not find your ffmpeg path please select it", ButtonEnum.Ok);
                 var result = await msgBoxError.ShowDialog(this);
@@ -112,11 +132,16 @@ namespace FFmpegAvalonia
                     ProfileBoxItems.Add(profile);
                 }
                 ProfileBox.Items = ProfileBoxItems;
-                //ProfileBox.DropDownClosing += ProfileBox2_DropDownClosing;
-                //ProfileBox.GotFocus += ProfileBox2_GotFocus;
-                //ProfileBox.IsDropDownOpen = true;
             }
             ViewModel.AutoOverwriteCheck = AppSettings.Settings.AutoOverwriteCheck;
+#if DEBUG
+            var buttonGrid = this.FindControl<Grid>("ButtonSec");
+            var testButton = new Button();
+            buttonGrid.Children.Add(testButton);
+            testButton.Content = "Test";
+            testButton.HorizontalAlignment = HorizontalAlignment.Right;
+            testButton.Click += Test_Click!;
+#endif
         }
         private void MainWindow_Closed(object? sender, EventArgs e)
         {
@@ -124,50 +149,6 @@ namespace FFmpegAvalonia
             Copier?.Stop();
             AppSettings.Settings.AutoOverwriteCheck = ViewModel.AutoOverwriteCheck;
             AppSettings.Save();
-        }
-        private void CopySourceCheck_Unchecked(object? sender, RoutedEventArgs e)
-        {
-            ExtBox.IsEnabled = true;
-            ProfileBox.IsEnabled = true;
-        }
-        private void CopySourceCheck_Checked(object? sender, RoutedEventArgs e)
-        {
-            ExtBox.IsEnabled = false;
-            ProfileBox.IsEnabled = false;
-        }
-        private void ProfileBox_GotFocus(object? sender, GotFocusEventArgs e)
-        {
-            //ProfileBox2.IsDropDownOpen = true;
-        }
-
-        private void ProfileBox_DropDownClosing(object? sender, EventArgs e)
-        {
-            /*Trace.TraceInformation("yeet");
-            if (!String.IsNullOrEmpty(ProfileBox2.Text))
-            {
-                bool check = false;
-                foreach (var item in ProfileBox2.Items)
-                {
-                    if (ProfileBox2.Text == item.ToString())
-                    {
-                        check = true;
-                        break;
-                    }
-                }
-                if (!check)
-                {
-                    ProfileBox2.SelectedItem = null;
-                    ProfileBox2.Text = null;
-                }
-            }*/
-        }
-        private void SourceFocused(object sender, GotFocusEventArgs e)
-        {
-            lastBox = SourceDirBox;
-        }
-        private void OutputFocused(object sender, GotFocusEventArgs e)
-        {
-            lastBox = OutputDirBox;
         }
         private async void Browse_Click(object sender, RoutedEventArgs e)
         {
@@ -180,30 +161,8 @@ namespace FFmpegAvalonia
                 textBox.Text = result;
             }
         }
-        private void DragOver(object sender, DragEventArgs e)
-        {
-            Trace.TraceInformation("DragOver");
-            // Only allow Copy or Link as Drop Operations.
-            e.DragEffects &= (DragDropEffects.Copy | DragDropEffects.Link);
-
-            // Only allow if the dragged data contains text or filenames.
-            if (!e.Data.Contains(DataFormats.Text) && !e.Data.Contains(DataFormats.FileNames))
-                e.DragEffects = DragDropEffects.None;
-        }
-        private void Drop(object sender, DragEventArgs e)
-        {
-            var t = e.GetPosition(SourceDirBox);
-            Trace.TraceInformation("Drop" + t.X + t.Y + t.ToString());
-            if (e.Data.Contains(DataFormats.Text))
-                lastBox.Text = e.Data.GetText();
-            else if (e.Data.Contains(DataFormats.FileNames))
-                lastBox.Text = string.Join(Environment.NewLine, e.Data.GetFileNames()!);
-        }
         private async void ListViewItem_Remove(object sender, RoutedEventArgs e)
         {
-            var control = e.Source as Control;
-            string itemName = (string)control!.Tag!;
-
             //CHECK IF QUEUE IS STARTED
             if (_IsQueueRunning)
             {
@@ -232,46 +191,16 @@ namespace FFmpegAvalonia
             }*/
             //CHECK IF ITEM HAS BEEN PROCESSED
 
-            foreach (ListViewData data in ListViewItems)
-            {
-                if (data.Name == itemName)
-                {
-                    ListViewItems.Remove(data);
-                    break;
-                }
-            }
+            Control control = (Control)sender;
+            ListViewData data = (ListViewData)control.DataContext!;
+            ListViewItems.Remove(data);
         }
+#if DEBUG
         private void Test_Click(object sender, RoutedEventArgs e)
         {
-            /*AppSettings yeet = new();
-            yeet.Export();
-            AppSettings.Import();*/
-            //AppSettings.ExportSettingsXML();
-            //Trace.TraceInformation(FFmpeg.CheckFFmpegExecutable(AppSettings.Settings.FFmpegPath));
-            /*Regex reg = new("(?:ffmpeg.*\\$etn\\s+)(?<args>(?:(?!\\s+\\$).)*).*(?<ext>\\..*)");
-            Match match = reg.Match("ffmpeg -i $SrcDir/${f%.*}.$etn  -vf \"yadif\" -aspect 16:9 -vcodec libx264 -b:v $dr -g 12 -bf 3 -b_strategy 1 -coder 1 -qmin 10 -qmax 51 -sc_threshold 40 -me_range 16 -me_method hex -subq 5 -i_qfactor 0.71 -qcomp 0.6 -qdiff 4 -r 30000/1001 -pix_fmt yuv420p -s 720x480 -acodec aac -ar 44100 -b:a 192k  $pathmp4/${f%.*}.mp4");
-            Trace.TraceInformation("ARGS= " + match.Groups["args"].Value);
-            Trace.TraceInformation("EXT= " + match.Groups["ext"].Value);*/
-            /*var dialog = new OpenFolderDialog();
-            var path = await dialog.ShowAsync(this);
-            if (path is not null)
-            {
-                AppSettings.ReadProfiles(path);
-            }
-            AppSettings.ExportProfilesXML();*/
-            /*foreach (var item in ListViewItems)
-            {
-                //Trace.TraceInformation(item.Description.FileCount.ToString());
-                item.Label = "SKEET";
-            }*/
-            /*Trace.TraceInformation(Assembly.GetExecutingAssembly().GetName().Version.ToString());
-            string response = "0";
-            if (Int32.TryParse(response, out int result) && result == 0)
-            {
-                Trace.TraceInformation("LKFSDJLKFJKLSD");
-            }*/
-            //AppSettings.ExportSettingsXML();
+            AppSettings.ReadProfiles(@"G:\OBS\10 Transfer Orders\import profiles");
         }
+#endif
         private void ListViewItem_Select(object sender, RoutedEventArgs e)//maybe remove?
         {
             /*var control = e.Source as Control;
@@ -296,6 +225,13 @@ namespace FFmpegAvalonia
             {
                 goto MsgBoxError;
             }
+            var fileCount = new DirectoryInfo(SourceDirBox.Text).EnumerateFiles($"*{ExtBox.Text}").Count();
+            if (fileCount == 0)
+            {
+                var msgBox = MessageBox.Avalonia.MessageBoxManager.GetMessageBoxStandardWindow("Error", "No files matching that extension exist");
+                await msgBox.Show(this);
+                return;
+            }
             if (CopySourceCheck.IsChecked.NullIsFalse())
             {
                 ListViewItems.Add(new ListViewData()
@@ -306,7 +242,7 @@ namespace FFmpegAvalonia
                     {
                         SourceDir = SourceDirBox.Text,
                         OutputDir = OutputDirBox.Text,
-                        FileCount = new DirectoryInfo(SourceDirBox.Text).EnumerateFiles($"*{ExtBox.Text}").Count(),
+                        FileCount = fileCount,
                         State = ItemState.Awaiting,
                         Type = ItemTask.Copy,
                         LabelProgressType = ItemLabelProgressType.TotalFileCount, //have as setting
@@ -345,7 +281,7 @@ namespace FFmpegAvalonia
                     SourceDir = SourceDirBox.Text,
                     OutputDir = OutputDirBox.Text,
                     FileExt = ExtBox.Text.StartsWith(".") ? ExtBox.Text : $".{ExtBox.Text}",
-                    FileCount = new DirectoryInfo(SourceDirBox.Text).EnumerateFiles($"*{ExtBox.Text}").Count(),
+                    FileCount = fileCount,
                     Profile = AppSettings.Profiles[ProfileBox.Text],
                     State = ItemState.Awaiting,
                     Type = ItemTask.Transcode,
@@ -371,7 +307,7 @@ namespace FFmpegAvalonia
                 return;
             }*/
 
-            if (String.IsNullOrEmpty(AppSettings.Settings.FFmpegPath))
+            if (String.IsNullOrWhiteSpace(AppSettings.Settings.FFmpegPath))
             {
                 var msgBoxError = MessageBox.Avalonia.MessageBoxManager.GetMessageBoxStandardWindow("Error", "The ffmpeg directory setting is blank");
                 await msgBoxError.ShowDialog(this);
@@ -398,7 +334,11 @@ namespace FFmpegAvalonia
                 else if (item.Description.Type == ItemTask.Transcode)
                 {
                     FFmp = new FFmpeg(AppSettings.Settings.FFmpegPath);
-                    Trace.TraceInformation(await Task.Run(() => FFmp.GetFrameCountApproximate(item.Description.SourceDir, "*" + item.Description.FileExt)));
+                    Trace.TraceInformation(await Task.Run(() => FFmp.GetFrameCountApproximate(
+                        dir: item.Description.SourceDir,
+                        searchPattern: "*" + item.Description.FileExt,
+                        args: item.Description.Profile.Arguments
+                    )));
                     response = await Task.Run(() => FFmp.RunProfile(
                         args: item.Description.Profile.Arguments,
                         outputDir: item.Description.OutputDir,
@@ -416,7 +356,7 @@ namespace FFmpegAvalonia
                     item.Check = true;
                     item.Description.State = ItemState.Complete;
                 }
-                else if (response == String.Empty)
+                else if (response != String.Empty)
                 {
                     item.Description.State = ItemState.Stopped;
                     var msgBoxCancel = MessageBox.Avalonia.MessageBoxManager.GetMessageBoxStandardWindow("Queue Canceled", $"Your queue was canceled on file {response}", ButtonEnum.Ok);
@@ -425,7 +365,7 @@ namespace FFmpegAvalonia
                 }
                 else
                 {
-                    throw new Exception("Internal task response error: string is empty");
+                    throw new Exception($"Internal task response error: string not valid: \"{response}\"");
                 }
             }
 
@@ -435,6 +375,7 @@ namespace FFmpegAvalonia
             SKIPDIALOG:
             CurrentItemInProgress = null;
             FFmp = null; //this will stop the method StopProfile() in MainWindow_Closed() from firing
+            Copier = null;
             _IsQueueRunning = false;
             AddToQueueBtn.IsEnabled = true;
             StartQueueBtn.IsEnabled = true;
@@ -460,7 +401,8 @@ namespace FFmpegAvalonia
             {
                 if (Copier is not null)
                 {
-                    Copier.CancelFlag = true;
+                    //Copier.CancelFlag = true;
+                    Copier.Stop();
                 }
                 else
                 {

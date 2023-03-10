@@ -7,7 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 using static FFmpegAvalonia.MainWindow;
 
-namespace FFmpegAvalonia
+namespace FFmpegAvalonia.ViewModels
 {
     internal class ListViewData : INotifyPropertyChanged
     {
@@ -16,7 +16,7 @@ namespace FFmpegAvalonia
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
-        private string _Name = String.Empty;
+        private string _Name = string.Empty;
         public string Name
         {
             get { return _Name; }
@@ -30,7 +30,7 @@ namespace FFmpegAvalonia
             }
         }
         private readonly object LabelLock = new();
-        private string _Label = String.Empty;
+        private string _Label = string.Empty;
         public string Label
         {
             get { return _Label; }

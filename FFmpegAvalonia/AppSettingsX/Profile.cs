@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace FFmpegAvalonia
+namespace FFmpegAvalonia.AppSettingsX
 {
     internal class Profile : PropertyReflection //maybe add position element
     {

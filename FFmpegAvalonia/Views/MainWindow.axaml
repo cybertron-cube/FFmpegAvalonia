@@ -8,9 +8,11 @@
 		Height="500"
 		MinWidth="800"
 		MinHeight="450"
+		Opened="MainWindow_Opened"
+		Closed="MainWindow_Closed"
         x:Class="FFmpegAvalonia.MainWindow"
         Title="FFmpeg Avalonia">
-	<Grid Name="MoveTarget" ShowGridLines="False">
+	<Grid Name="MainGrid" ShowGridLines="False" DragDrop.AllowDrop="True">
 		<Grid.ColumnDefinitions>
 			<ColumnDefinition Width="130"></ColumnDefinition>
 			<ColumnDefinition Width="2*"></ColumnDefinition>
@@ -50,12 +52,12 @@
 		<Button Name="OutputDirBrowseBtn" Content="Browse..." Grid.Column="2" Grid.Row="2" VerticalAlignment="Center" HorizontalAlignment="Center" Click="Browse_Click"/>
 
 		<Label Content="Extension" Grid.Column="0" Grid.Row="3" VerticalAlignment="Center" HorizontalAlignment="Center"/>
-		<TextBox Name="ExtBox" Watermark=".mkv, .mp4, .mxf" Grid.Column="1" Grid.Row="3" Height="20"/>
+		<TextBox Name="ExtBox" Watermark=".mkv, .mp4, .mxf" IsEnabled="{Binding Path=!CopySourceCheck}" DragDrop.AllowDrop="False" Grid.Column="1" Grid.Row="3" Height="20"/>
 
 		<Label Content="Profile" Grid.Column="0" Grid.Row="4" VerticalAlignment="Center" HorizontalAlignment="Center"/>
-		<AutoCompleteBox Name="ProfileBox" IsTextCompletionEnabled="True" MinimumPrefixLength="0" Grid.Column="1" Grid.Row="4" VerticalAlignment="Center" HorizontalAlignment="Stretch"/>
+		<AutoCompleteBox Name="ProfileBox" IsTextCompletionEnabled="True" MinimumPrefixLength="0" IsEnabled="{Binding Path=!CopySourceCheck}" DragDrop.AllowDrop="False" Grid.Column="1" Grid.Row="4" VerticalAlignment="Center" HorizontalAlignment="Stretch"/>
 
-		<Grid Grid.Column="0" Grid.Row="5" Grid.ColumnSpan="3">
+		<Grid Name="ButtonSec" Grid.Column="0" Grid.Row="5" Grid.ColumnSpan="3">
 			<Button Name="AddToQueueBtn" Content="Add to Queue" Click="AddToQueue_Click" VerticalAlignment="Top" HorizontalAlignment="Center"/>
 			<Button Name="StartQueueBtn" Content="Start Queue" Click="StartQueue_Click" VerticalAlignment="Bottom" HorizontalAlignment="Center" Margin="0, 0, 100, 16"/>
 			<Button Name="StopQueueBtn" Content="Stop Queue" Click="StopQueue_Click" IsEnabled="False" VerticalAlignment="Bottom" HorizontalAlignment="Center" Margin="100, 0, 0, 16">
@@ -67,8 +69,6 @@
 			</Button>
 			<CheckBox Name="CopySourceCheck" Content="Copy source files to output" IsChecked="{Binding Path=CopySourceCheck}" VerticalAlignment="Top" HorizontalAlignment="Left" Margin="50, 5, 0, 0"/>
 			<CheckBox Name="AutoOverwriteCheck" Content="Overwrite files if prompted" IsChecked="{Binding Path=AutoOverwriteCheck}" VerticalAlignment="Center" HorizontalAlignment="Left" Margin="50, 15, 0, 0"/>
-
-			<!--<Button Content="Test" Click="Test_Click" HorizontalAlignment="Right"/>-->
 		</Grid>
 		
 		<ListView Name="ProgListView" HorizontalAlignment="Stretch" BorderThickness="0" Padding="0" Grid.Column="0" Grid.Row="6" Grid.ColumnSpan="3">
@@ -77,14 +77,14 @@
 					<Border Margin="-12, -8, -12, -11" CornerRadius="0" BorderBrush="SkyBlue" Background="{Binding Path=Background}" BorderThickness="2" Padding="8">
 						<Border.ContextMenu>
 							<ContextMenu>
-								<MenuItem Tag="{Binding Path=Name}" Header="Select" Click="ListViewItem_Select"/>
-								<MenuItem Tag="{Binding Path=Name}" Header="Remove" Click="ListViewItem_Remove"/>
+								<MenuItem Tag="{Binding Path=Index}" Header="Select" Click="ListViewItem_Select"/>
+								<MenuItem Tag="{Binding Path=Index}" Header="Remove" Click="ListViewItem_Remove"/>
 							</ContextMenu>
 						</Border.ContextMenu>
-						<DockPanel Name="{Binding Path=Name}" ToolTip.Tip="yeet" Background="{Binding Path=Background}" VerticalAlignment="Stretch" HorizontalAlignment="Stretch" Tag="{Binding Path=Name}">
+						<DockPanel ToolTip.Tip="yeet" Background="{Binding Path=Background}" VerticalAlignment="Stretch" HorizontalAlignment="Stretch" Tag="{Binding Path=Name}">
 							<CheckBox DockPanel.Dock="Left" IsChecked="{Binding Path=Check}" IsHitTestVisible="False" Focusable="False"/>
 							<Label DockPanel.Dock="Left" Content="{Binding Path=Label}" Margin="0, 0, 10, 0" VerticalContentAlignment="Center"/>
-							<Button Tag="{Binding Path=Name}" DockPanel.Dock="Right" HorizontalAlignment="Center" Margin="10, 0, 0, 0" Click="ListViewItem_Remove">
+							<Button Tag="{Binding Path=Index}" DockPanel.Dock="Right" HorizontalAlignment="Center" Margin="10, 0, 0, 0" Click="ListViewItem_Remove">
 								<Canvas Height="10"  Width="10">
 									<Path Stroke="Red" StrokeThickness="2">
 										<Path.Data>

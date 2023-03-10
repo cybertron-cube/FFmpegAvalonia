@@ -7,15 +7,13 @@
     <TrimMode>copyused</TrimMode>
     <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
 	<IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+	<AssemblyVersion>1.0.0.1</AssemblyVersion>
   </PropertyGroup>
   <ItemGroup>
     <AvaloniaXaml Remove="MessageBox.axaml" />
   </ItemGroup>
   <ItemGroup>
     <Compile Remove="MessageBox.axaml.cs" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Remove=".gitignore" />
   </ItemGroup>
   <ItemGroup>
     <!--This helps with theme dll-s trimming.
