@@ -18,6 +18,7 @@ namespace FFmpegAvalonia
     {
         Transcode = 1,
         Copy = 2,
+        Trim = 3,
     }
     public enum ItemLabelProgressType
     {

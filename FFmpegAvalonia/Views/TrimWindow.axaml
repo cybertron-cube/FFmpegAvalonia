@@ -1,0 +1,69 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+		Width="500" Height="500"
+		MinWidth="500" MinHeight="250"
+        x:Class="FFmpegAvalonia.Views.TrimWindow"
+        Title="Trim">
+	<Border>
+		<Grid ShowGridLines="False">
+			<Grid.ColumnDefinitions>
+				<ColumnDefinition Width="*"/>
+				<ColumnDefinition Width="*"/>
+			</Grid.ColumnDefinitions>
+			<Grid.RowDefinitions>
+				<RowDefinition Height="30"/>
+				<RowDefinition Height="*"/>
+				<RowDefinition Height="60"/>
+				<RowDefinition Height="60"/>
+			</Grid.RowDefinitions>
+			<Grid Grid.ColumnSpan="2" ShowGridLines="False" Background="Black">
+				<Grid.ColumnDefinitions>
+					<ColumnDefinition Width="*"/>
+					<ColumnDefinition Width="125"/>
+					<ColumnDefinition Width="125"/>
+				</Grid.ColumnDefinitions>
+				<Border BorderThickness="0, 0, 2, 0" BorderBrush="Gray" Grid.Column="0">
+					<Label Content="File Name" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+				</Border>
+				<Border BorderBrush="Gray" BorderThickness="0, 0, 2, 0" Grid.Column="1">
+					<Label Content="Start Time" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+				</Border>
+				<Label Content="Stop Time" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" Grid.Column="2"/>
+			</Grid>
+			<ListBox Name="TimeCodeListBox" Items="{Binding Path=ListBoxItems}" SelectedItem="{Binding Path=ListBoxSelectedItem}" SelectionMode="Single" Grid.Row="1" Grid.ColumnSpan="2">
+				<ListBox.ItemTemplate>
+					<DataTemplate>
+						<Grid ShowGridLines="False" Margin="0, 0, 0 ,0">
+							<Grid.ColumnDefinitions>
+								<ColumnDefinition Width="*"/>
+								<ColumnDefinition Width="124.4"/>
+								<ColumnDefinition Width="113"/>
+							</Grid.ColumnDefinitions>
+							<Border BorderBrush="Gray" BorderThickness="0, 0, 2, 0" Grid.Column="0">
+								<Label Tag="FileName" Content="{Binding Path=Name}"/>
+							</Border>
+							<Border BorderBrush="Gray" BorderThickness="0, 0, 2, 0" Grid.Column="1">
+								<Label Tag="StartTime" Content="{Binding Path=StartTime}" HorizontalAlignment="Center" Grid.Column="1"/>
+							</Border>
+							<Label Tag="EndTime" Content="{Binding Path=EndTime}" HorizontalAlignment="Right" Grid.Column="2"/>
+						</Grid>
+					</DataTemplate>
+				</ListBox.ItemTemplate>
+			</ListBox>
+			<StackPanel Grid.Column="0" Grid.Row="2">
+				<Label Content="Start Timecode" HorizontalAlignment="Center"/>
+				<TextBox Name="StartTimeCodeTextBox" MaxLength="{Binding Path=TextMaxLength}" Text="{Binding Path=StartTime}" Watermark="00:00:00.000" Margin="10, 0, 10, 0"/>
+			</StackPanel>
+			<StackPanel Grid.Column="1" Grid.Row="2">
+				<Label Content="End Timecode" HorizontalAlignment="Center"/>
+				<TextBox Name="EndTimeCodeTextBox" MaxLength="{Binding Path=TextMaxLength}" Text="{Binding Path=EndTime}" Watermark="00:00:00.000" Margin="10, 0, 10, 0"/>
+			</StackPanel>
+			<Grid Grid.Row="3" Grid.ColumnSpan="2">
+				<Button Name="SetTimeCodeBtn" Content="Set Timecodes" Command="{Binding Path=SetTimeCodeValues}" HorizontalAlignment="Center"/>
+			</Grid>
+		</Grid>
+	</Border>
+</Window>

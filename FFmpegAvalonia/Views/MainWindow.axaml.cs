@@ -34,6 +34,11 @@ using System.Text;
 using FFmpegAvalonia.ViewModels;
 using FFmpegAvalonia.AppSettingsX;
 using Avalonia.VisualTree;
+using ReactiveUI.Validation.Extensions;
+using ReactiveUI;
+using Avalonia.ReactiveUI;
+using Avalonia.Controls.Mixins;
+using FFmpegAvalonia.Views;
 
 namespace FFmpegAvalonia
 {
@@ -65,7 +70,7 @@ namespace FFmpegAvalonia
             AddHandler(DragDrop.DragOverEvent, DragOver!);
             ProgListView.Items = ListViewItems;
             DataContext = ViewModel;
-            Title = "CyberAva ffmpeg " + Assembly.GetExecutingAssembly().GetName().Version!.ToString();
+            Title = "FFmpeg Avalonia " + Assembly.GetExecutingAssembly().GetName().Version!.ToString();
         }
         private void DragOver(object sender, DragEventArgs e)
         {
@@ -145,7 +150,7 @@ namespace FFmpegAvalonia
         }
         private void MainWindow_Closed(object? sender, EventArgs e)
         {
-            FFmp?.StopProfile();
+            FFmp?.Stop();
             Copier?.Stop();
             AppSettings.Settings.AutoOverwriteCheck = ViewModel.AutoOverwriteCheck;
             AppSettings.Save();
@@ -198,39 +203,36 @@ namespace FFmpegAvalonia
 #if DEBUG
         private void Test_Click(object sender, RoutedEventArgs e)
         {
-            AppSettings.ReadProfiles(@"G:\OBS\10 Transfer Orders\import profiles");
+            //AppSettings.ReadProfiles(@"G:\OBS\10 Transfer Orders\import profiles");
+            /*DirectoryInfo dirinfo = new(@"G:\OBS\10 Transfer Orders\import profiles");
+            var files = dirinfo.EnumerateFiles("**");
+            foreach (var file in files)
+            {
+                Debug.WriteLine(file.Name);
+            }*/
+            SourceDirBox.Text = @"G:\OBS\10 Transfer Orders\test\out";
+            ExtBox.Text = "mkv";
+            TrimCheck.IsChecked = true;
         }
 #endif
-        private void ListViewItem_Select(object sender, RoutedEventArgs e)//maybe remove?
+        private async void ListViewItem_Edit(object sender, RoutedEventArgs e)
         {
-            /*var control = e.Source as Control;
-            var sourceParent = control.Parent.Parent.Parent as DockPanel;
-            var sourceParentName = (string)sourceParent.Tag;
-
-            foreach (ListViewData item in ProgListView.Items)
+            Control control = (Control)sender;
+            ListViewData data = (ListViewData)control.DataContext!;
+            TrimWindow trimWindow = new() { DataContext = new TrimWindowViewModel() { ListBoxItems = data.Description.TrimData } };
+            await trimWindow.ShowDialog(this);
+            foreach (var item in data.Description.TrimData!)
             {
-                if (item.Name == sourceParentName)
-                {
-                    ProgListView.SelectedItem = item;
-                    break;
-                }
-            }*/
-            /*ListViewData test = (ListViewData)ProgListView.SelectedItem;
-            Trace.TraceInformation(test.Name + "STYP");*/
-            //FFmpeg.Yeet(OutputDirBox.Text, "*" + ExtBox.Text);
+                Trace.TraceInformation(item.FileInfo.FullName);
+                Trace.TraceInformation(item.StartTime);
+                Trace.TraceInformation(item.EndTime);
+            }
         }
         private async void AddToQueue_Click(object sender, RoutedEventArgs e)
         {
-            if (String.IsNullOrWhiteSpace(SourceDirBox.Text) || String.IsNullOrWhiteSpace(OutputDirBox.Text))
+            if (!ViewModel.ValidationContext.IsValid)
             {
                 goto MsgBoxError;
-            }
-            var fileCount = new DirectoryInfo(SourceDirBox.Text).EnumerateFiles($"*{ExtBox.Text}").Count();
-            if (fileCount == 0)
-            {
-                var msgBox = MessageBox.Avalonia.MessageBoxManager.GetMessageBoxStandardWindow("Error", "No files matching that extension exist");
-                await msgBox.Show(this);
-                return;
             }
             if (CopySourceCheck.IsChecked.NullIsFalse())
             {
@@ -242,13 +244,51 @@ namespace FFmpegAvalonia
                     {
                         SourceDir = SourceDirBox.Text,
                         OutputDir = OutputDirBox.Text,
-                        FileCount = fileCount,
+                        FileExt = ExtBox.Text.StartsWith(".") ? ExtBox.Text : $".{ExtBox.Text}",
+                        FileCount = Directory.EnumerateFiles(SourceDirBox.Text, $"*{ExtBox.Text}").Count(),
                         State = ItemState.Awaiting,
-                        Type = ItemTask.Copy,
+                        Task = ItemTask.Copy,
                         LabelProgressType = ItemLabelProgressType.TotalFileCount, //have as setting
                         ProgressBarType = ItemProgressBarType.File, //have as setting
                     },
                     Background = Brushes.AliceBlue,
+                });
+                return;
+            }
+            else if (ViewModel.TrimCheck)
+            {
+                ObservableCollection<TrimData> trimData = new();
+                DirectoryInfo dirInfo = new(SourceDirBox.Text);
+                var files = dirInfo.EnumerateFiles("*" + ExtBox.Text);
+                foreach (var file in files)
+                {
+                    trimData.Add(new TrimData(file));
+                }
+                TrimWindow trimWindow = new() { DataContext = new TrimWindowViewModel() { ListBoxItems = trimData } };
+                await trimWindow.ShowDialog(this);
+                foreach (var item in trimData)
+                {
+                    Trace.TraceInformation(item.FileInfo.NameWithoutExtension());
+                    Trace.TraceInformation(item.StartTime);
+                    Trace.TraceInformation(item.EndTime);
+                }
+                ListViewItems.Add(new ListViewData()
+                {
+                    Name = Path.GetFileName(SourceDirBox.Text),
+                    Label = Path.GetFileName(SourceDirBox.Text),
+                    Description = new DescriptionData()
+                    {
+                        SourceDir = SourceDirBox.Text,
+                        OutputDir = OutputDirBox.Text == String.Empty? SourceDirBox.Text : OutputDirBox.Text,
+                        FileExt = ExtBox.Text.StartsWith(".") ? ExtBox.Text : $".{ExtBox.Text}",
+                        TrimData = trimData,
+                        FileCount = files.Count(),
+                        State = ItemState.Awaiting,
+                        Task = ItemTask.Trim,
+                        LabelProgressType = ItemLabelProgressType.TotalFileCount, //have as setting
+                        ProgressBarType = ItemProgressBarType.File, //have as setting
+                    },
+                    Background = Brushes.BlanchedAlmond,
                 });
                 return;
             }
@@ -260,7 +300,7 @@ namespace FFmpegAvalonia
                     {
                         if (ProfileBox.Text == item.ToString())
                         {
-                            goto NextCheck;
+                            goto AddTranscodeItem;
                         }
                     }
                 }
@@ -268,11 +308,7 @@ namespace FFmpegAvalonia
                 await msgBoxProfileError.ShowDialog(this);
                 return;
             }
-            NextCheck:
-            if (String.IsNullOrWhiteSpace(ExtBox.Text))
-            {
-                goto MsgBoxError;
-            }
+            AddTranscodeItem:
             ListViewItems.Add(new ListViewData() {
                 Name = Path.GetFileName(SourceDirBox.Text),
                 Label = Path.GetFileName(SourceDirBox.Text),
@@ -281,10 +317,10 @@ namespace FFmpegAvalonia
                     SourceDir = SourceDirBox.Text,
                     OutputDir = OutputDirBox.Text,
                     FileExt = ExtBox.Text.StartsWith(".") ? ExtBox.Text : $".{ExtBox.Text}",
-                    FileCount = fileCount,
+                    FileCount = Directory.EnumerateFiles(SourceDirBox.Text, $"*{ExtBox.Text}").Count(),
                     Profile = AppSettings.Profiles[ProfileBox.Text],
                     State = ItemState.Awaiting,
-                    Type = ItemTask.Transcode,
+                    Task = ItemTask.Transcode,
                     LabelProgressType = ItemLabelProgressType.None, //have as setting
                     ProgressBarType = ItemProgressBarType.Directory, //have as setting
                 },
@@ -326,12 +362,23 @@ namespace FFmpegAvalonia
             {
                 CurrentItemInProgress = item;
                 item.Description.State = ItemState.Progressing;
-                if (item.Description.Type == ItemTask.Copy)
+                if (item.Description.Task == ItemTask.Copy)
                 {
                     Copier = new(new Progress<double>(x => item.Progress = x), item, ViewModel);
-                    response = await Task.Run(() => Copier.CopyDirectory(item.Description.SourceDir, item.Description.OutputDir));
+                    response = await Task.Run(() => Copier.CopyDirectory(item.Description.SourceDir, item.Description.OutputDir, "*" + item.Description.FileExt));
                 }
-                else if (item.Description.Type == ItemTask.Transcode)
+                else if (item.Description.Task == ItemTask.Trim)
+                {
+                    FFmp = new FFmpeg(AppSettings.Settings.FFmpegPath);
+                    response = await Task.Run(() => FFmp.TrimDir(
+                        sourceDir: item.Description.SourceDir,
+                        outputDir: item.Description.OutputDir,
+                        trimData: item.Description.TrimData,
+                        progress: new Progress<double>(x => item.Progress = x),
+                        item: item
+                    ));
+                }
+                else if (item.Description.Task == ItemTask.Transcode)
                 {
                     FFmp = new FFmpeg(AppSettings.Settings.FFmpegPath);
                     Trace.TraceInformation(await Task.Run(() => FFmp.GetFrameCountApproximate(
@@ -385,11 +432,11 @@ namespace FFmpegAvalonia
         }
         private void StopQueue_Click(object sender, RoutedEventArgs e)
         {
-            if (CurrentItemInProgress!.Description.Type == ItemTask.Transcode)
+            if (CurrentItemInProgress!.Description.Task == ItemTask.Transcode)
             {
                 if (FFmp is not null)
                 {
-                    FFmp.StopProfile();
+                    FFmp.Stop();
                 }
                 else
                 {
@@ -397,7 +444,7 @@ namespace FFmpegAvalonia
                     msgBoxError.ShowDialog(this);
                 }
             }
-            else if (CurrentItemInProgress!.Description.Type == ItemTask.Copy)
+            else if (CurrentItemInProgress!.Description.Task == ItemTask.Copy)
             {
                 if (Copier is not null)
                 {
@@ -419,7 +466,7 @@ namespace FFmpegAvalonia
                 }
                 else
                 {
-                    FFmp?.StopProfile();
+                    FFmp?.Stop();
                     Copier?.Stop();
                     var msgBoxError = MessageBox.Avalonia.MessageBoxManager.GetMessageBoxStandardWindow("Error", "There do be was a problem plz tell how?!?!?", ButtonEnum.Ok);
                     msgBoxError.ShowDialog(this);

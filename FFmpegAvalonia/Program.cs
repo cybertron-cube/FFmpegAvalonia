@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Extensions.Controls;
+using Avalonia.ReactiveUI;
 using System;
 
 namespace FFmpegAvalonia
@@ -20,6 +21,7 @@ namespace FFmpegAvalonia
             => AppBuilder.Configure<App>()
                 .UsePlatformDetect()
                 .UseDoveExtensions()
+                .UseReactiveUI()
                 .LogToTrace();
     }
 }

@@ -12,6 +12,50 @@
 		Closed="MainWindow_Closed"
         x:Class="FFmpegAvalonia.MainWindow"
         Title="FFmpeg Avalonia">
+
+	<Window.Styles>
+		<Style Selector="DataValidationErrors">
+			<Setter Property="Template">
+				<ControlTemplate>
+					<DockPanel LastChildFill="True">
+						<ContentControl DockPanel.Dock="Right"
+										ContentTemplate="{TemplateBinding ErrorTemplate}"
+										DataContext="{TemplateBinding Owner}"
+										Content="{Binding (DataValidationErrors.Errors)}"
+										IsVisible="{Binding (DataValidationErrors.HasErrors)}"/>
+						<ContentPresenter Name="PART_ContentPresenter"
+										  Background="{TemplateBinding Background}"
+										  BorderBrush="{TemplateBinding BorderBrush}"
+										  BorderThickness="{TemplateBinding BorderThickness}"
+										  CornerRadius="{TemplateBinding CornerRadius}"
+										  ContentTemplate="{TemplateBinding ContentTemplate}"
+										  Content="{TemplateBinding Content}"
+										  Padding="{TemplateBinding Padding}"/>
+					</DockPanel>
+				</ControlTemplate>
+			</Setter>
+			<Setter Property="ErrorTemplate">
+				<DataTemplate>
+					<Canvas Width="14" Height="14" Margin="4 0 1 0"
+							Background="Transparent">
+						<Canvas.Styles>
+							<Style Selector="ToolTip">
+								<Setter Property="Background" Value="Red"/>
+								<Setter Property="BorderBrush" Value="DarkRed"/>
+							</Style>
+						</Canvas.Styles>
+						<ToolTip.Tip>
+							<ItemsControl Items="{Binding}"/>
+						</ToolTip.Tip>
+						<Path Data="M14,7 A7,7 0 0,0 0,7 M0,7 A7,7 0 1,0 14,7 M7,3l0,5 M7,9l0,2"
+							  Stroke="Red"
+							  StrokeThickness="2"/>
+					</Canvas>
+				</DataTemplate>
+			</Setter>
+		</Style>
+	</Window.Styles>
+	
 	<Grid Name="MainGrid" ShowGridLines="False" DragDrop.AllowDrop="True">
 		<Grid.ColumnDefinitions>
 			<ColumnDefinition Width="130"></ColumnDefinition>
@@ -44,18 +88,18 @@
 		</Menu>
 		
 		<Label Content="Source Directory" Grid.Column="0" Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Center"/>
-		<TextBox Name="SourceDirBox" Watermark="Source" DragDrop.AllowDrop="True" Grid.Column="1" Grid.Row="1" Height="20"/>
+		<TextBox Name="SourceDirBox" Watermark="Source" DragDrop.AllowDrop="True" Text="{Binding Path=SourceDirText}" Grid.Column="1" Grid.Row="1" Height="20"/>
 		<Button Name="SourceDirBrowseBtn" Content="Browse..." Grid.Column="2" Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Center" Click="Browse_Click"/>
 		
 		<Label Content="Output Directory" Grid.Column="0" Grid.Row="2" VerticalAlignment="Center" HorizontalAlignment="Center"/>
-		<TextBox Name="OutputDirBox" Watermark="Output" DragDrop.AllowDrop="True" Grid.Column="1" Grid.Row="2" Height="20"/>
+		<TextBox Name="OutputDirBox" Watermark="Output" Text="{Binding Path=OutputDirText}" DragDrop.AllowDrop="True" Grid.Column="1" Grid.Row="2" Height="20"/>
 		<Button Name="OutputDirBrowseBtn" Content="Browse..." Grid.Column="2" Grid.Row="2" VerticalAlignment="Center" HorizontalAlignment="Center" Click="Browse_Click"/>
 
 		<Label Content="Extension" Grid.Column="0" Grid.Row="3" VerticalAlignment="Center" HorizontalAlignment="Center"/>
-		<TextBox Name="ExtBox" Watermark=".mkv, .mp4, .mxf" IsEnabled="{Binding Path=!CopySourceCheck}" DragDrop.AllowDrop="False" Grid.Column="1" Grid.Row="3" Height="20"/>
+		<TextBox Name="ExtBox" Watermark=".mkv, .mp4, .mxf" Text="{Binding Path=ExtText}" IsEnabled="{Binding Path=ExtBoxIsEnabled}" DragDrop.AllowDrop="False" Grid.Column="1" Grid.Row="3" Height="20"/>
 
 		<Label Content="Profile" Grid.Column="0" Grid.Row="4" VerticalAlignment="Center" HorizontalAlignment="Center"/>
-		<AutoCompleteBox Name="ProfileBox" IsTextCompletionEnabled="True" MinimumPrefixLength="0" IsEnabled="{Binding Path=!CopySourceCheck}" DragDrop.AllowDrop="False" Grid.Column="1" Grid.Row="4" VerticalAlignment="Center" HorizontalAlignment="Stretch"/>
+		<AutoCompleteBox Name="ProfileBox" IsTextCompletionEnabled="True" MinimumPrefixLength="0" IsEnabled="{Binding Path=ProfileBoxIsEnabled}" DragDrop.AllowDrop="False" Grid.Column="1" Grid.Row="4" VerticalAlignment="Center" HorizontalAlignment="Stretch"/>
 
 		<Grid Name="ButtonSec" Grid.Column="0" Grid.Row="5" Grid.ColumnSpan="3">
 			<Button Name="AddToQueueBtn" Content="Add to Queue" Click="AddToQueue_Click" VerticalAlignment="Top" HorizontalAlignment="Center"/>
@@ -67,8 +111,9 @@
 					</ContextMenu>
 				</Button.ContextMenu>
 			</Button>
-			<CheckBox Name="CopySourceCheck" Content="Copy source files to output" IsChecked="{Binding Path=CopySourceCheck}" VerticalAlignment="Top" HorizontalAlignment="Left" Margin="50, 5, 0, 0"/>
-			<CheckBox Name="AutoOverwriteCheck" Content="Overwrite files if prompted" IsChecked="{Binding Path=AutoOverwriteCheck}" VerticalAlignment="Center" HorizontalAlignment="Left" Margin="50, 15, 0, 0"/>
+			<CheckBox Name="AutoOverwriteCheck" Content="Overwrite files if prompted" IsChecked="{Binding Path=AutoOverwriteCheck}" VerticalAlignment="Center" HorizontalAlignment="Left" Margin="50, 0, 0, 15"/>
+			<CheckBox Name="CopySourceCheck" Content="Copy files" IsChecked="{Binding Path=CopySourceCheck}" IsEnabled="{Binding Path=CopyCheckIsEnabled}" VerticalAlignment="Top" HorizontalAlignment="Right" Margin="0, 5, 134, 0"/>
+			<CheckBox Name="TrimCheck" Content="Trim files" IsChecked="{Binding Path=TrimCheck}" IsEnabled="{Binding Path=TrimCheckIsEnabled}" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0, 15, 140, 0"/>
 		</Grid>
 		
 		<ListView Name="ProgListView" HorizontalAlignment="Stretch" BorderThickness="0" Padding="0" Grid.Column="0" Grid.Row="6" Grid.ColumnSpan="3">
@@ -77,7 +122,7 @@
 					<Border Margin="-12, -8, -12, -11" CornerRadius="0" BorderBrush="SkyBlue" Background="{Binding Path=Background}" BorderThickness="2" Padding="8">
 						<Border.ContextMenu>
 							<ContextMenu>
-								<MenuItem Tag="{Binding Path=Index}" Header="Select" Click="ListViewItem_Select"/>
+								<MenuItem Tag="{Binding Path=Index}" Header="Edit" Click="ListViewItem_Edit"/>
 								<MenuItem Tag="{Binding Path=Index}" Header="Remove" Click="ListViewItem_Remove"/>
 							</ContextMenu>
 						</Border.ContextMenu>

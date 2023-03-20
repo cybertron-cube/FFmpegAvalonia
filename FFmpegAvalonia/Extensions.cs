@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Security;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -57,6 +59,21 @@ namespace ExtensionMethods
                 false => false,
                 _ => false
             };
+        }
+        public static bool IsEven(this int val)
+        {
+            if (val % 2 == 0) return true; return false;
+        }
+        public static void Rename(this FileInfo file, string newName)
+        {
+            if (file.Directory is not null)
+            {
+                file.MoveTo(Path.Combine(file.Directory.FullName, newName));
+            }
+        }
+        public static string NameWithoutExtension(this FileInfo file)
+        {
+            return Path.GetFileNameWithoutExtension(file.FullName);
         }
         //extend FileInfo with NameWithoutExtension() -- use in ReadProfiles method of settings.cs
 

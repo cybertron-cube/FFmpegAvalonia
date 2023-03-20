@@ -12,8 +12,8 @@ namespace FFmpegAvalonia
     public class FFmpegProcess : Process
     {
         private readonly string _FFmpegPath;
-        private readonly string FFmpeg = "ffmpeg";
-        private readonly string FFprobe = "ffprobe";
+        private readonly string FFmpeg;
+        private readonly string FFprobe;
         public FFmpegProcess(string ffMpegDir)
         {
             _FFmpegPath = ffMpegDir;

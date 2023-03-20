@@ -17,6 +17,7 @@ using System.Threading.Tasks;
 using ExtensionMethods;
 using System.Threading;
 using FFmpegAvalonia.ViewModels;
+using System.Collections.ObjectModel;
 
 namespace FFmpegAvalonia
 {
@@ -34,6 +35,7 @@ namespace FFmpegAvalonia
         }
         private int _TotalPrevFrameProgress;
         private int _TotalDirFrames;
+        private double _EndTime;
         private IProgress<double>? _UIProgress;
         //private bool _IsDisposed;
         private readonly object _DisposeLock = new();
@@ -199,7 +201,84 @@ namespace FFmpegAvalonia
             //_FFProcess.Dispose();
             return "0";
         }
-        public void StopProfile()
+        /*public string Trim(string startTime, string endTime, string inputFile, string outputFile)
+        {
+
+        }*/
+        public async Task<string> TrimDir(ObservableCollection<TrimData> trimData, string sourceDir, string outputDir, IProgress<double> progress, ListViewData item)
+        {
+            _UIProgress = progress;
+            if (outputDir == String.Empty || sourceDir == outputDir)
+            {
+                foreach (TrimData data in trimData)
+                {
+                    _EndTime = double.Parse(data.EndTime.Replace(":", "").Replace(".", "")) * 1000;
+                    NewFFProcess();
+                    _FFProcess.OutputDataReceived += new DataReceivedEventHandler(TrimStdOutHandler);
+                    if (CancelQ)
+                    {
+                        _FFProcess.Dispose();
+                        CancelQ = false;
+                        return data.FileInfo.FullName;
+                    }
+                    string newFile = Path.Combine(data.FileInfo.Directory.FullName, $"_{data.FileInfo.Name}");
+                    _FFProcess.StartMpeg($"-progress pipe:1 -ss {data.StartTime} -to {data.EndTime} -i \"{data.FileInfo.FullName}\" -map 0 -codec copy \"{newFile}\"");
+                    _FFProcess.BeginOutputReadLine();
+                    await ReadStdErr();
+                    await _FFProcess.WaitForExitAsync();
+                    Trace.TraceInformation("Process Exit Code: " + _FFProcess.ExitCode);
+                    if (CancelQ)
+                    {
+                        _FFProcess.Dispose();
+                        CancelQ = false;
+                        return data.FileInfo.FullName;
+                    }
+                    lock (_DisposeLock)
+                    {
+                        _FFProcess.Dispose();
+                    }
+                    string rename = data.FileInfo.FullName;
+                    data.FileInfo.Delete();
+                    File.Move(newFile, rename);
+                    item.Label = $"{item.Name} ({++item.Description.CurrentFileNumber}/{item.Description.FileCount})";
+                }
+                return "0";
+            }
+            else
+            {
+                foreach (TrimData data in trimData)
+                {
+                    _EndTime = double.Parse(data.EndTime.Replace(":", "").Replace(".", "")) * 1000;
+                    NewFFProcess();
+                    _FFProcess.OutputDataReceived += new DataReceivedEventHandler(TrimStdOutHandler);
+                    if (CancelQ)
+                    {
+                        _FFProcess.Dispose();
+                        CancelQ = false;
+                        return data.FileInfo.FullName;
+                    }
+                    string newFile = Path.Combine(outputDir, data.FileInfo.Name);
+                    _FFProcess.StartMpeg($"-progress pipe:1 -ss {data.StartTime} -to {data.EndTime} -i \"{data.FileInfo.FullName}\" -map 0 -codec copy \"{newFile}\"");
+                    _FFProcess.BeginOutputReadLine();
+                    await ReadStdErr();
+                    await _FFProcess.WaitForExitAsync();
+                    Trace.TraceInformation("Process Exit Code: " + _FFProcess.ExitCode);
+                    if (CancelQ)
+                    {
+                        _FFProcess.Dispose();
+                        CancelQ = false;
+                        return data.FileInfo.FullName;
+                    }
+                    lock (_DisposeLock)
+                    {
+                        _FFProcess.Dispose();
+                    }
+                    item.Label = $"{item.Name} ({++item.Description.CurrentFileNumber}/{item.Description.FileCount})";
+                }
+                return "0";
+            }
+        }
+        public void Stop()
         {
             CancelQ = true;
             lock (_DisposeLock)
@@ -329,9 +408,22 @@ namespace FFmpegAvalonia
                 {
                     _LastFrame = Int32.Parse(e.Data.Split("=")[1].Trim()); //trim
                     Trace.TraceInformation(_LastFrame.ToString());
-                    var progress = ((double)_LastFrame + _TotalPrevFrameProgress) / _TotalDirFrames;
+                    double progress = ((double)_LastFrame + _TotalPrevFrameProgress) / _TotalDirFrames;
                     Trace.TraceInformation(progress.ToString());
                     _UIProgress!.Report(((double)_LastFrame + _TotalPrevFrameProgress) / _TotalDirFrames);
+                }
+            }
+        }
+        private void TrimStdOutHandler(object sendingProcess, DataReceivedEventArgs e)
+        {
+            if (e.Data != null)
+            {
+                Trace.TraceInformation("STDOUT**--" + e.Data);
+                if (e.Data.Contains("out_time="))
+                {
+                    double currentTime = double.Parse(e.Data.Split("=")[1].Replace(":", "").Replace(".", ""));
+                    Trace.TraceInformation(currentTime.ToString());
+                    _UIProgress!.Report(currentTime / _EndTime);
                 }
             }
         }

@@ -164,10 +164,10 @@ namespace CyberFileUtils
             }
             OnComplete();
         }
-        public string CopyDirectory(string sourceDir, string outputDir)
+        public string CopyDirectory(string sourceDir, string outputDir, string ext)
         {
             DirectoryInfo dirInfo = new(sourceDir);
-            var files = dirInfo.EnumerateFiles();
+            var files = dirInfo.EnumerateFiles(ext);
             //Total = files.Count();
             this.OnProgressChanged += ProgressFileCopier_OnProgressChanged;
             this.OnComplete += ProgressFileCopier_OnComplete;
