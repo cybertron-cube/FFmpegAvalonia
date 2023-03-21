@@ -237,15 +237,15 @@ namespace FFmpegAvalonia
                         CancelQ = false;
                         return data.FileInfo.FullName;
                     }
-                    lock (_DisposeLock)
-                    {
-                        _FFProcess.Dispose();
-                    }
                     if (_FFProcess.ExitCode == 0)
                     {
                         string rename = data.FileInfo.FullName;
                         data.FileInfo.Delete();
-                        File.Move(newFile, rename); 
+                        File.Move(newFile, rename);
+                    }
+                    lock (_DisposeLock)
+                    {
+                        _FFProcess.Dispose();
                     }
                     item.Label = $"{item.Name} ({++item.Description.CurrentFileNumber}/{item.Description.FileCount})";
                 }
