@@ -359,13 +359,13 @@ namespace FFmpegAvalonia
                 sb.Append(inputChar);
                 if (sb.EndsWith(Environment.NewLine))
                 {
-                    var line = sb.ToString();
+                    var line = sb.ToStringTrimEnd(Environment.NewLine);
                     sb = new StringBuilder();
                     Trace.TraceInformation(line);
                 }
-                else if (sb.EndsWith("already exists. Overwrite? [y/N] "))
+                else if (sb.Contains("[y/N]", StringComparison.OrdinalIgnoreCase))
                 {
-                    Trace.TraceInformation("Overwrite prompt found");
+                    Trace.TraceInformation("Yes/No prompt found");
                     var line = sb.ToString();
                     if (_ViewModel!.AutoOverwriteCheck)
                     {
@@ -378,9 +378,8 @@ namespace FFmpegAvalonia
                             var msgBox = MessageBox.Avalonia.MessageBoxManager.GetMessageBoxStandardWindow(new MessageBox.Avalonia.DTO.MessageBoxStandardParams
                             {
                                 ButtonDefinitions = ButtonEnum.YesNo,
-                                ContentTitle = "Overwrite",
-                                ContentHeader = "Overwrite?",
-                                ContentMessage = $"The file \"{line.Split(@"'")[1].Split(@"'")[0]}\" already exists, would you like to overwrite it?"
+                                ContentTitle = "FFmpeg yes/no prompt",
+                                ContentMessage = line.Replace("[y/N]", "").Trim()
                             });
                             var app = (IClassicDesktopStyleApplicationLifetime)Application.Current!.ApplicationLifetime!;
                             var result = await msgBox.ShowDialog(app.MainWindow);
@@ -393,8 +392,8 @@ namespace FFmpegAvalonia
                                 await _FFProcess.StandardInput.WriteLineAsync("n");
                             }
                         }, DispatcherPriority.MaxValue);
-                        sb = new StringBuilder();
                     }
+                    sb = new StringBuilder();
                     Trace.TraceInformation(line);
                 }
             }
