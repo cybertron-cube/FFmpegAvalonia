@@ -18,6 +18,8 @@ using ExtensionMethods;
 using System.Threading;
 using FFmpegAvalonia.ViewModels;
 using System.Collections.ObjectModel;
+using PCLUntils.IEnumerables;
+using System.Linq;
 
 namespace FFmpegAvalonia
 {
@@ -207,10 +209,12 @@ namespace FFmpegAvalonia
         }*/
         public async Task<string> TrimDir(ObservableCollection<TrimData> trimData, string sourceDir, string outputDir, IProgress<double> progress, ListViewData item)
         {
+
+            item.Description.FileCount = trimData.Where(x => x.StartTime != String.Empty).Count();
             _UIProgress = progress;
             if (outputDir == String.Empty || sourceDir == outputDir)
             {
-                foreach (TrimData data in trimData)
+                foreach (TrimData data in trimData.Where(x => x.StartTime != String.Empty))
                 {
                     _EndTime = double.Parse(data.EndTime.Replace(":", "").Replace(".", "")) * 1000;
                     NewFFProcess();
