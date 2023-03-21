@@ -219,13 +219,16 @@ namespace FFmpegAvalonia
         {
             Control control = (Control)sender;
             ListViewData data = (ListViewData)control.DataContext!;
-            TrimWindow trimWindow = new() { DataContext = new TrimWindowViewModel() { ListBoxItems = data.Description.TrimData } };
-            await trimWindow.ShowDialog(this);
-            foreach (var item in data.Description.TrimData!)
+            if (data.Description.Task == ItemTask.Trim) 
             {
-                Trace.TraceInformation(item.FileInfo.FullName);
-                Trace.TraceInformation(item.StartTime);
-                Trace.TraceInformation(item.EndTime);
+                TrimWindow trimWindow = new() { DataContext = new TrimWindowViewModel() { ListBoxItems = data.Description.TrimData } };
+                await trimWindow.ShowDialog(this);
+                foreach (var item in data.Description.TrimData!)
+                {
+                    Trace.TraceInformation(item.FileInfo.FullName);
+                    Trace.TraceInformation(item.StartTime);
+                    Trace.TraceInformation(item.EndTime);
+                }
             }
         }
         private async void AddToQueue_Click(object sender, RoutedEventArgs e)
