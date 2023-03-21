@@ -409,7 +409,7 @@ namespace FFmpegAvalonia
                     _LastFrame = Int32.Parse(e.Data.Split("=")[1].Trim()); //trim
                     Trace.TraceInformation(_LastFrame.ToString());
                     double progress = ((double)_LastFrame + _TotalPrevFrameProgress) / _TotalDirFrames;
-                    Trace.TraceInformation(progress.ToString());
+                    Trace.TraceInformation($"Progress: {progress} frames finished");
                     _UIProgress!.Report(((double)_LastFrame + _TotalPrevFrameProgress) / _TotalDirFrames);
                 }
             }
@@ -422,8 +422,13 @@ namespace FFmpegAvalonia
                 if (e.Data.Contains("out_time="))
                 {
                     double currentTime = double.Parse(e.Data.Split("=")[1].Replace(":", "").Replace(".", ""));
-                    Trace.TraceInformation(currentTime.ToString());
+                    Trace.TraceInformation($"Progress: {currentTime}");
                     _UIProgress!.Report(currentTime / _EndTime);
+                }
+                else if (e.Data.Contains("progress=end"))
+                {
+                    Trace.TraceInformation("File completed");
+                    _UIProgress!.Report(1);
                 }
             }
         }
