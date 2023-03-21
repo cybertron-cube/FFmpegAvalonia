@@ -20,16 +20,26 @@ namespace FFmpegAvalonia.ViewModels
                     x => x.EndTime,
                     x => x.ListBoxSelectedItem,
                     (startTime, endTime, listBoxSelectedItem) => (startTime.Length == TextMaxLength || startTime == "0")
-                                                                 && endTime.Length == TextMaxLength
+                                                                 && (endTime.Length == TextMaxLength || endTime == "0")
                                                                  && TimeCode.ToInt(endTime) > TimeCode.ToInt(startTime)
                                                                  && listBoxSelectedItem is not null);
+            IObservable<bool> removeCanExecute =
+                this.WhenAnyValue(
+                    property1: x => x.ListBoxSelectedItem,
+                    selector: (listBoxSelectedItem) => listBoxSelectedItem is not null);
             SetTimeCodeValues = ReactiveCommand.Create(() =>
             {
                 ListBoxSelectedItem!.StartTime = StartTime;
                 ListBoxSelectedItem!.EndTime = EndTime;
             }, canExecute);
+            RemoveTimeCodeValues = ReactiveCommand.Create(() =>
+            {
+                ListBoxSelectedItem!.StartTime = String.Empty;
+                ListBoxSelectedItem!.EndTime = String.Empty;
+            }, removeCanExecute);
         }
         public ReactiveCommand<Unit, Unit> SetTimeCodeValues { get; }
+        public ReactiveCommand<Unit, Unit> RemoveTimeCodeValues { get; }
         private const int _textMaxLength = 12;
         public static int TextMaxLength { get { return _textMaxLength; } }
         private ObservableCollection<TrimData>? _listBoxItems;

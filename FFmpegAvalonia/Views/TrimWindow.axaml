@@ -17,7 +17,7 @@
 				<RowDefinition Height="30"/>
 				<RowDefinition Height="*"/>
 				<RowDefinition Height="60"/>
-				<RowDefinition Height="60"/>
+				<RowDefinition Height="75"/>
 			</Grid.RowDefinitions>
 			<Grid Grid.ColumnSpan="2" ShowGridLines="False" Background="Black">
 				<Grid.ColumnDefinitions>
@@ -61,9 +61,10 @@
 				<Label Content="End Timecode" HorizontalAlignment="Center"/>
 				<TextBox Name="EndTimeCodeTextBox" MaxLength="{Binding Path=TextMaxLength}" Text="{Binding Path=EndTime}" Watermark="00:00:00.000" Margin="10, 0, 10, 0"/>
 			</StackPanel>
-			<Grid Grid.Row="3" Grid.ColumnSpan="2">
+			<StackPanel Grid.Row="3" Grid.ColumnSpan="2" VerticalAlignment="Center" Spacing="5" Margin="0, -6, 0, 0">
 				<Button Name="SetTimeCodeBtn" Content="Set Timecodes" Command="{Binding Path=SetTimeCodeValues}" HorizontalAlignment="Center"/>
-			</Grid>
+				<Button Name="RemoveTimeCodeBtn" Content="Remove" Command="{Binding Path=RemoveTimeCodeValues}" HorizontalAlignment="Center"/>
+			</StackPanel>
 		</Grid>
 	</Border>
 </Window>
