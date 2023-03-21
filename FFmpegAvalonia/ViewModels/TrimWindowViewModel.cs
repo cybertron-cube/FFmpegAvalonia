@@ -20,7 +20,8 @@ namespace FFmpegAvalonia.ViewModels
                     x => x.EndTime,
                     x => x.ListBoxSelectedItem,
                     (startTime, endTime, listBoxSelectedItem) => (startTime.Length == TextMaxLength || startTime == "0")
-                                                                 && (endTime.Length == TextMaxLength || endTime == "0")
+                                                                 && endTime.Length == TextMaxLength
+                                                                 && TimeCode.ToInt(endTime) > TimeCode.ToInt(startTime)
                                                                  && listBoxSelectedItem is not null);
             SetTimeCodeValues = ReactiveCommand.Create(() =>
             {

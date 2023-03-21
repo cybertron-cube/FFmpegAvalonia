@@ -166,6 +166,15 @@ namespace ExtensionMethods
         {
             if (val % 2 == 0) return true; return false;
         }
+        public static string Combine(this string[] stringArray)
+        {
+            StringBuilder sb = new();
+            foreach (string str in stringArray)
+            {
+                sb.Append(str);
+            }
+            return sb.ToString();
+        }
         public static void Rename(this FileInfo file, string newName)
         {
             if (file.Directory is not null)
