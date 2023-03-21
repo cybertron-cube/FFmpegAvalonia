@@ -36,7 +36,7 @@
 			<ListBox Name="TimeCodeListBox" Items="{Binding Path=ListBoxItems}" SelectedItem="{Binding Path=ListBoxSelectedItem}" SelectionMode="Single" Grid.Row="1" Grid.ColumnSpan="2">
 				<ListBox.ItemTemplate>
 					<DataTemplate>
-						<Grid ShowGridLines="False" Margin="0, 0, 0 ,0">
+						<Grid ShowGridLines="False" Margin="0, 0, 0, 0">
 							<Grid.ColumnDefinitions>
 								<ColumnDefinition Width="*"/>
 								<ColumnDefinition Width="124.4"/>
@@ -46,9 +46,9 @@
 								<Label Tag="FileName" Content="{Binding Path=Name}"/>
 							</Border>
 							<Border BorderBrush="Gray" BorderThickness="0, 0, 2, 0" Grid.Column="1">
-								<Label Tag="StartTime" Content="{Binding Path=StartTime}" HorizontalAlignment="Center" Grid.Column="1"/>
+								<Label Tag="StartTime" Content="{Binding Path=StartTime}" HorizontalAlignment="Center"/>
 							</Border>
-							<Label Tag="EndTime" Content="{Binding Path=EndTime}" HorizontalAlignment="Right" Grid.Column="2"/>
+							<Label Tag="EndTime" Content="{Binding Path=EndTime}" HorizontalAlignment="Center" Grid.Column="2" BorderBrush="Transparent" BorderThickness="1" Margin="0, 0, -11.4, 0"/>
 						</Grid>
 					</DataTemplate>
 				</ListBox.ItemTemplate>
