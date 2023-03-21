@@ -19,6 +19,11 @@ namespace FFmpegAvalonia.Views
             StartTimeCodeTextBox.AddHandler(TextInputEvent, TextInputValidation, RoutingStrategies.Tunnel);
             EndTimeCodeTextBox.AddHandler(TextInputEvent, TextInputValidation, RoutingStrategies.Tunnel);
             TimeCodeListBox.SelectionChanged += TimeCodeListBox_SelectionChanged;
+            Opened += TrimWindow_Opened;
+        }
+        private void TrimWindow_Opened(object? sender, EventArgs e)
+        {
+            TimeCodeListBox.SelectedItem = TimeCodeListBox.Items.ElementAt(0);
         }
         private void TimeCodeListBox_SelectionChanged(object? sender, SelectionChangedEventArgs e)
         {
