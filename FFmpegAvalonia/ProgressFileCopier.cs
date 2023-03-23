@@ -80,7 +80,7 @@ namespace CyberFileUtils
 
             OnComplete();
         }
-        private async void CopyFile()
+        private void CopyFile()
         {
             byte[] buffer = new byte[1024 * 1024]; // 1MB buffer
 
@@ -96,75 +96,18 @@ namespace CyberFileUtils
                     {
                         totalBytes += currentBlockSize;
                         double percentage = (double)totalBytes / fileLength;
-                        try
+                        dest.Write(buffer, 0, currentBlockSize);
+                        OnProgressChanged(percentage);
+                        if (CancelFlag)
                         {
-                            dest.Write(buffer, 0, currentBlockSize);
-                            OnProgressChanged(percentage);
-                            if (CancelFlag)
-                            {
-                                return;
-                            } 
-                        }
-                        catch (IOException e)
-                        {
-                            if (File.Exists(OutputFilePath))
-                            {
-                                if (_ViewModel!.AutoOverwriteCheck)
-                                {
-                                    File.Delete(OutputFilePath);
-                                    dest.Write(buffer, 0, currentBlockSize);
-                                    OnProgressChanged(percentage);
-                                }
-                                else
-                                {
-                                    await Dispatcher.UIThread.InvokeAsync(async () =>
-                                    {
-                                        var msgBox = MessageBox.Avalonia.MessageBoxManager.GetMessageBoxStandardWindow(new MessageBox.Avalonia.DTO.MessageBoxStandardParams
-                                        {
-                                            ButtonDefinitions = ButtonEnum.YesNo,
-                                            ContentTitle = "Overwrite",
-                                            ContentHeader = "Overwrite?",
-                                            ContentMessage = $"The file \"{OutputFilePath}\" already exists, would you like to overwrite it?"
-                                        });
-                                        var app = (IClassicDesktopStyleApplicationLifetime)Application.Current!.ApplicationLifetime!;
-                                        var result = await msgBox.ShowDialog(app.MainWindow);
-                                        if (result == ButtonResult.Yes)
-                                        {
-                                            File.Delete(OutputFilePath);
-                                            dest.Write(buffer, 0, currentBlockSize);
-                                            OnProgressChanged(percentage);
-                                        }
-                                        else
-                                        {
-                                            return;
-                                        }
-                                    }, DispatcherPriority.MaxValue);
-                                }
-                            }
-                            else
-                            {
-                                await Dispatcher.UIThread.InvokeAsync(async () =>
-                                {
-                                    var msgBox = MessageBox.Avalonia.MessageBoxManager.GetMessageBoxStandardWindow(new MessageBox.Avalonia.DTO.MessageBoxStandardParams
-                                    {
-                                        ButtonDefinitions = ButtonEnum.Ok,
-                                        ContentTitle = "IO Exception",
-                                        ContentHeader = "An IO Exception has occured",
-                                        ContentMessage = e.Message
-                                    });
-                                    var app = (IClassicDesktopStyleApplicationLifetime)Application.Current!.ApplicationLifetime!;
-                                    await msgBox.ShowDialog(app.MainWindow);
-                                    //CancelFlag = true;
-                                    return;
-                                }, DispatcherPriority.MaxValue);
-                            }
+                            return;
                         }
                     }
                 }
             }
             OnComplete();
         }
-        public string CopyDirectory(string sourceDir, string outputDir, string ext)
+        public async Task<string> CopyDirectory(string sourceDir, string outputDir, string ext)
         {
             DirectoryInfo dirInfo = new(sourceDir);
             var files = dirInfo.EnumerateFiles(ext);
@@ -178,12 +121,47 @@ namespace CyberFileUtils
                 SourceFilePath = file.FullName;
                 OutputFilePath = Path.Combine(outputDir, file.Name);
                 _Item.Description.CurrentFileName = file.Name;
+                if (File.Exists(OutputFilePath))
+                {
+                    if (!_ViewModel.AutoOverwriteCheck)
+                    {
+                        bool overwrite = false;
+                        await Dispatcher.UIThread.InvokeAsync(async () =>
+                        {
+                            var msgBox = MessageBox.Avalonia.MessageBoxManager.GetMessageBoxStandardWindow(new MessageBox.Avalonia.DTO.MessageBoxStandardParams
+                            {
+                                ButtonDefinitions = ButtonEnum.YesNo,
+                                ContentTitle = "Overwrite",
+                                ContentHeader = "Overwrite?",
+                                ContentMessage = $"The file \"{OutputFilePath}\" already exists, would you like to overwrite it?"
+                            });
+                            var app = (IClassicDesktopStyleApplicationLifetime)Application.Current!.ApplicationLifetime!;
+                            var result = await msgBox.ShowDialog(app.MainWindow);
+                            if (result == ButtonResult.Yes)
+                            {
+                                overwrite = true;
+                                File.Delete(OutputFilePath);
+                            }
+                            else
+                            {
+                                overwrite = false;
+                            }
+                        }, DispatcherPriority.MaxValue);
+                        if (!overwrite)
+                        {
+                            continue;
+                        }
+                    }
+                    else
+                    {
+                        File.Delete(OutputFilePath);
+                    }
+                }
                 CopyFile();
                 if (CancelFlag)
                 {
                     File.Delete(OutputFilePath);
                     return file.FullName;
-                    //break;
                 }
             }
             return "0";
