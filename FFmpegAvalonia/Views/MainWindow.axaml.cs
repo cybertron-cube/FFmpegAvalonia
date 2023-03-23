@@ -436,7 +436,7 @@ namespace FFmpegAvalonia
         }
         private void StopQueue_Click(object sender, RoutedEventArgs e)
         {
-            if (CurrentItemInProgress!.Description.Task == ItemTask.Transcode)
+            if (CurrentItemInProgress!.Description.Task == ItemTask.Transcode || CurrentItemInProgress!.Description.Task == ItemTask.Trim)
             {
                 if (FFmp is not null)
                 {
