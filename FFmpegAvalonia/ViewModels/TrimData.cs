@@ -25,14 +25,14 @@ namespace FFmpegAvalonia.ViewModels
         {
             get => _fileInfo.NameWithoutExtension();
         }
-        private string _startTime = String.Empty;
-        public string StartTime
+        private TimeCode? _startTime;
+        public TimeCode? StartTime
         {
             get => _startTime;
             set => this.RaiseAndSetIfChanged(ref _startTime, value);
         }
-        private string _endTime = String.Empty;
-        public string EndTime
+        private TimeCode? _endTime;
+        public TimeCode? EndTime
         {
             get => _endTime;
             set => this.RaiseAndSetIfChanged(ref _endTime, value);

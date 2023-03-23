@@ -20,22 +20,23 @@ namespace FFmpegAvalonia.ViewModels
                     x => x.EndTime,
                     x => x.ListBoxSelectedItem,
                     (startTime, endTime, listBoxSelectedItem) => (startTime.Length == TextMaxLength || startTime == "0")
-                                                                 && (endTime.Length == TextMaxLength || endTime == "0")
+                                                                 && endTime.Length == TextMaxLength
                                                                  && TimeCode.ToInt(endTime) > TimeCode.ToInt(startTime)
                                                                  && listBoxSelectedItem is not null);
             IObservable<bool> removeCanExecute =
                 this.WhenAnyValue(
                     property1: x => x.ListBoxSelectedItem,
-                    selector: (listBoxSelectedItem) => listBoxSelectedItem is not null);
+                    selector: (listBoxSelectedItem) => listBoxSelectedItem is not null
+                                                       && listBoxSelectedItem.StartTime is not null);
             SetTimeCodeValues = ReactiveCommand.Create(() =>
             {
-                ListBoxSelectedItem!.StartTime = StartTime;
-                ListBoxSelectedItem!.EndTime = EndTime;
+                ListBoxSelectedItem!.StartTime = StartTime == "0" ? TimeCode.Parse("00:00:00.000") : TimeCode.Parse(StartTime);
+                ListBoxSelectedItem!.EndTime = TimeCode.Parse(EndTime);
             }, canExecute);
             RemoveTimeCodeValues = ReactiveCommand.Create(() =>
             {
-                ListBoxSelectedItem!.StartTime = String.Empty;
-                ListBoxSelectedItem!.EndTime = String.Empty;
+                ListBoxSelectedItem!.StartTime = null;
+                ListBoxSelectedItem!.EndTime = null;
             }, removeCanExecute);
         }
         public ReactiveCommand<Unit, Unit> SetTimeCodeValues { get; }

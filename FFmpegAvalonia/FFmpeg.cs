@@ -207,16 +207,17 @@ namespace FFmpegAvalonia
         {
 
         }*/
-        public async Task<string> TrimDir(ObservableCollection<TrimData> trimData, string sourceDir, string outputDir, IProgress<double> progress, ListViewData item)
+        public async Task<string> TrimDir(ObservableCollection<TrimData> trimData, string sourceDir, string outputDir, IProgress<double> progress, ListViewData item, MainWindowViewModel viewModel)
         {
-
-            item.Description.FileCount = trimData.Where(x => x.StartTime != String.Empty).Count();
             _UIProgress = progress;
+            _ViewModel = viewModel;
+            var trimDataValidTimeCodes = trimData.Where(x => x.StartTime is not null && x.EndTime is not null);
+            item.Description.FileCount = trimDataValidTimeCodes.Count();
             if (outputDir == String.Empty || sourceDir == outputDir)
             {
-                foreach (TrimData data in trimData.Where(x => x.StartTime != String.Empty))
+                foreach (TrimData data in trimDataValidTimeCodes)
                 {
-                    _EndTime = double.Parse(data.EndTime.Replace(":", "").Replace(".", "")) * 1000;
+                    _EndTime = (double)data.EndTime!.Value * 1000;
                     NewFFProcess();
                     _FFProcess.OutputDataReceived += new DataReceivedEventHandler(TrimStdOutHandler);
                     if (CancelQ)
@@ -226,7 +227,7 @@ namespace FFmpegAvalonia
                         return data.FileInfo.FullName;
                     }
                     string newFile = Path.Combine(data.FileInfo.Directory.FullName, $"_{data.FileInfo.Name}");
-                    _FFProcess.StartMpeg($"-progress pipe:1 -ss {data.StartTime} -to {data.EndTime} -i \"{data.FileInfo.FullName}\" -map 0 -codec copy \"{newFile}\"");
+                    _FFProcess.StartMpeg($"-progress pipe:1 -ss {data.StartTime!.FormattedString} -to {data.EndTime.FormattedString} -i \"{data.FileInfo.FullName}\" -map 0 -codec copy \"{newFile}\"");
                     _FFProcess.BeginOutputReadLine();
                     await ReadStdErr();
                     await _FFProcess.WaitForExitAsync();
@@ -253,9 +254,9 @@ namespace FFmpegAvalonia
             }
             else
             {
-                foreach (TrimData data in trimData)
+                foreach (TrimData data in trimDataValidTimeCodes)
                 {
-                    _EndTime = double.Parse(data.EndTime.Replace(":", "").Replace(".", "")) * 1000;
+                    _EndTime = (double)data.EndTime!.Value * 1000;
                     NewFFProcess();
                     _FFProcess.OutputDataReceived += new DataReceivedEventHandler(TrimStdOutHandler);
                     if (CancelQ)
@@ -265,7 +266,7 @@ namespace FFmpegAvalonia
                         return data.FileInfo.FullName;
                     }
                     string newFile = Path.Combine(outputDir, data.FileInfo.Name);
-                    _FFProcess.StartMpeg($"-progress pipe:1 -ss {data.StartTime} -to {data.EndTime} -i \"{data.FileInfo.FullName}\" -map 0 -codec copy \"{newFile}\"");
+                    _FFProcess.StartMpeg($"-progress pipe:1 -ss {data.StartTime!.FormattedString} -to {data.EndTime.FormattedString} -i \"{data.FileInfo.FullName}\" -map 0 -codec copy \"{newFile}\"");
                     _FFProcess.BeginOutputReadLine();
                     await ReadStdErr();
                     await _FFProcess.WaitForExitAsync();

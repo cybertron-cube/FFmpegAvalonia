@@ -46,9 +46,9 @@
 								<Label Tag="FileName" Content="{Binding Path=Name}"/>
 							</Border>
 							<Border BorderBrush="Gray" BorderThickness="0, 0, 2, 0" Grid.Column="1">
-								<Label Tag="StartTime" Content="{Binding Path=StartTime}" HorizontalAlignment="Center"/>
+								<Label Tag="StartTime" Content="{Binding Path=StartTime.FormattedString}" HorizontalAlignment="Center"/>
 							</Border>
-							<Label Tag="EndTime" Content="{Binding Path=EndTime}" HorizontalAlignment="Center" Grid.Column="2" BorderBrush="Transparent" BorderThickness="1" Margin="0, 0, -11.4, 0"/>
+							<Label Tag="EndTime" Content="{Binding Path=EndTime.FormattedString}" HorizontalAlignment="Center" Grid.Column="2" BorderBrush="Transparent" BorderThickness="1" Margin="0, 0, -11.4, 0"/>
 						</Grid>
 					</DataTemplate>
 				</ListBox.ItemTemplate>

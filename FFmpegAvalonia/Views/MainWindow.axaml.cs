@@ -225,9 +225,9 @@ namespace FFmpegAvalonia
                 await trimWindow.ShowDialog(this);
                 foreach (var item in data.Description.TrimData!)
                 {
-                    Trace.TraceInformation(item.FileInfo.FullName);
-                    Trace.TraceInformation(item.StartTime);
-                    Trace.TraceInformation(item.EndTime);
+                    Trace.TraceInformation("Name: " + item.FileInfo.FullName);
+                    Trace.TraceInformation("Start Time: " + item.StartTime?.FormattedString);
+                    Trace.TraceInformation("End Time: " + item.EndTime?.FormattedString);
                 }
             }
         }
@@ -271,9 +271,9 @@ namespace FFmpegAvalonia
                 await trimWindow.ShowDialog(this);
                 foreach (var item in trimData)
                 {
-                    Trace.TraceInformation(item.FileInfo.NameWithoutExtension());
-                    Trace.TraceInformation(item.StartTime);
-                    Trace.TraceInformation(item.EndTime);
+                    Trace.TraceInformation("Name: " + item.FileInfo.FullName);
+                    Trace.TraceInformation("Start Time: " + item.StartTime?.FormattedString);
+                    Trace.TraceInformation("End Time: " + item.EndTime?.FormattedString);
                 }
                 ListViewItems.Add(new ListViewData()
                 {
@@ -378,7 +378,8 @@ namespace FFmpegAvalonia
                         outputDir: item.Description.OutputDir,
                         trimData: item.Description.TrimData,
                         progress: new Progress<double>(x => item.Progress = x),
-                        item: item
+                        item: item,
+                        viewModel: ViewModel
                     ));
                 }
                 else if (item.Description.Task == ItemTask.Transcode)
