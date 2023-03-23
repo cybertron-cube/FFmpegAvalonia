@@ -213,6 +213,7 @@ namespace FFmpegAvalonia
             _ViewModel = viewModel;
             var trimDataValidTimeCodes = trimData.Where(x => x.StartTime is not null && x.EndTime is not null);
             item.Description.FileCount = trimDataValidTimeCodes.Count();
+            item.Label = $"{item.Name} ({++item.Description.CurrentFileNumber}/{item.Description.FileCount})";
             if (outputDir == String.Empty || sourceDir == outputDir)
             {
                 foreach (TrimData data in trimDataValidTimeCodes)
