@@ -42,17 +42,11 @@ using FFmpegAvalonia.Views;
 
 namespace FFmpegAvalonia
 {
-    public partial class MainWindow : Window
+    public partial class MainWindow : ReactiveWindow<MainWindowViewModel>
     {
-        private FFmpeg? FFmp;
-        private ProgressFileCopier? Copier;
-        private ListViewData? CurrentItemInProgress;
-        private bool _IsQueueRunning;
-        private readonly ObservableCollection<ListViewData> ListViewItems = new();
-        private readonly ObservableCollection<string> ProfileBoxItems = new();
         public AppSettings AppSettings = new();
-        public MainWindowViewModel ViewModel = new();
-
+        public new MainWindowViewModel ViewModel;
+        private bool _confirmShutdown;
         public MainWindow()
         {
             //Trace.Listeners.Add(new TextWriterTraceListener(Path.Combine(AppContext.BaseDirectory, "debug.log")));
@@ -66,12 +60,69 @@ namespace FFmpegAvalonia
             Trace.Listeners.Add(listener);
             Trace.AutoFlush = true;
             InitializeComponent();
+            ViewModel = new(AppSettings);
+            DataContext = ViewModel;
             this.WhenActivated(d => d(ViewModel!.ShowTextEditorDialog.RegisterHandler(DoShowTextEditorDialogAsync))); //COMBINE these into one line????
+            this.WhenActivated(d => d(ViewModel!.ShowTrimDialog.RegisterHandler(DoShowTrimDialogAsync)));//
+            //this.WhenActivated(d => d(ViewModel!.ShowDownloadUpdatesDialog.RegisterHandler(DoShowDownloadUpdatesDialogAsync)));
+            this.WhenActivated(d => d(ViewModel!.ShowMessageBox.RegisterHandler(DoShowMessageBoxAsync)));//
             AddHandler(DragDrop.DropEvent, Drop!);
             AddHandler(DragDrop.DragOverEvent, DragOver!);
             ProgListView.Items = ListViewItems;
             DataContext = ViewModel;
             Title = "FFmpeg Avalonia " + Assembly.GetExecutingAssembly().GetName().Version!.ToString();
+        }
+
+        private async void MainWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
+        {
+            if (_confirmShutdown) return;
+            if (!ViewModel.IsQueueRunning) return;
+            e.Cancel = true;
+            var msgBox = MessageBox.GetMessageBox(new MessageBoxParams
+            {
+                Title = "Closing",
+                Header = "The queue is still running",
+                Message = "Are you sure you want to quit?",
+                Buttons = MessageBoxButtons.YesNo,
+                StartupLocation = WindowStartupLocation.CenterOwner
+            });
+            var result = await msgBox.ShowDialog(this);
+            if (result == MessageBoxResult.Yes)
+            {
+                _confirmShutdown = true;
+                this.Close();
+            }
+        }
+
+        private async Task DoShowTextEditorDialogAsync(InteractionContext<string, string?> interaction)
+        {
+            var dialog = new TextEditorWindow();
+            dialog.Editor.Text = interaction.Input;
+            var result = await dialog.ShowDialog<string?>(this);
+            interaction.SetOutput(result);
+        }
+        /*private async Task DoShowDownloadUpdatesDialogAsync(InteractionContext<Updater.CheckUpdateResult, Unit> interaction)
+        {
+            var dialog = new DownloadUpdateWindow();
+            dialog.CheckUpdateResult = interaction.Input;
+            dialog.HttpClient = ViewModel.HttpClient;
+            await dialog.ShowDialog(this);
+            interaction.SetOutput(new Unit());
+        }*/
+        private async Task DoShowTrimDialogAsync(InteractionContext<TrimWindowViewModel, bool> interaction)
+        {
+            TrimWindow dialog = new()
+            {
+                DataContext = interaction.Input
+            };
+            var result = await dialog.ShowDialog<bool>(this);
+            interaction.SetOutput(result);
+        }
+        private async Task DoShowMessageBoxAsync(InteractionContext<MessageBoxParams, MessageBoxResult> interaction)
+        {
+            var msgBox = MessageBox.GetMessageBox(interaction.Input);
+            var result = await msgBox.ShowDialog(this);
+            interaction.SetOutput(result);
         }
         private void DragOver(object sender, DragEventArgs e)
         {
@@ -170,8 +221,7 @@ namespace FFmpegAvalonia
         }
         private async void ListViewItem_Remove(object sender, RoutedEventArgs e)
         {
-            //CHECK IF QUEUE IS STARTED
-            if (_IsQueueRunning)
+            if (ViewModel.IsQueueRunning)
             {
                 var msgBoxError = MessageBox.Avalonia.MessageBoxManager.GetMessageBoxStandardWindow(new MessageBox.Avalonia.DTO.MessageBoxStandardParams
                 {
@@ -219,6 +269,7 @@ namespace FFmpegAvalonia
 #endif
         private async void ListViewItem_Edit(object sender, RoutedEventArgs e)
         {
+            if (ViewModel.IsQueueRunning) { return; }
             Control control = (Control)sender;
             ListViewData data = (ListViewData)control.DataContext!;
             if (data.Description.Task == ItemTask.Trim) 
@@ -247,235 +298,10 @@ namespace FFmpegAvalonia
                     Label = Path.GetFileName(SourceDirBox.Text),
                     Description = new DescriptionData()
                     {
-                        SourceDir = SourceDirBox.Text,
-                        OutputDir = OutputDirBox.Text,
-                        FileExt = ExtBox.Text.StartsWith(".") ? ExtBox.Text : $".{ExtBox.Text}",
-                        FileCount = Directory.EnumerateFiles(SourceDirBox.Text, $"*{ExtBox.Text}").Count(),
-                        State = ItemState.Awaiting,
-                        Task = ItemTask.Copy,
-                        LabelProgressType = ItemLabelProgressType.TotalFileCount, //have as setting
-                        ProgressBarType = ItemProgressBarType.File, //have as setting
-                    },
-                    Background = Brushes.AliceBlue,
-                });
-                return;
-            }
-            else if (ViewModel.TrimCheck)
-            {
-                ObservableCollection<TrimData> trimData = new();
-                DirectoryInfo dirInfo = new(SourceDirBox.Text);
-                var files = dirInfo.EnumerateFiles("*" + ExtBox.Text);
-                foreach (var file in files)
-                {
-                    trimData.Add(new TrimData(file));
-                }
-                TrimWindow trimWindow = new() { DataContext = new TrimWindowViewModel() { ListBoxItems = trimData } };
-                await trimWindow.ShowDialog(this);
-                foreach (var item in trimData)
-                {
                     Trace.TraceInformation("Name: " + item.FileInfo.FullName);
                     Trace.TraceInformation("Start Time: " + item.StartTime?.FormattedString);
                     Trace.TraceInformation("End Time: " + item.EndTime?.FormattedString);
                 }
-                ListViewItems.Add(new ListViewData()
-                {
-                    Name = Path.GetFileName(SourceDirBox.Text),
-                    Label = Path.GetFileName(SourceDirBox.Text),
-                    Description = new DescriptionData()
-                    {
-                        SourceDir = SourceDirBox.Text,
-                        OutputDir = OutputDirBox.Text == String.Empty? SourceDirBox.Text : OutputDirBox.Text,
-                        FileExt = ExtBox.Text.StartsWith(".") ? ExtBox.Text : $".{ExtBox.Text}",
-                        TrimData = trimData,
-                        FileCount = files.Count(),
-                        State = ItemState.Awaiting,
-                        Task = ItemTask.Trim,
-                        LabelProgressType = ItemLabelProgressType.TotalFileCount, //have as setting
-                        ProgressBarType = ItemProgressBarType.File, //have as setting
-                    },
-                    Background = Brushes.BlanchedAlmond,
-                });
-                return;
-            }
-            if (ProfileBox.SelectedItem is null)
-            {
-                if (!String.IsNullOrEmpty(ProfileBox.Text))
-                {
-                    foreach (var item in ProfileBox.Items)
-                    {
-                        if (ProfileBox.Text == item.ToString())
-                        {
-                            goto AddTranscodeItem;
-                        }
-                    }
-                }
-                var msgBoxProfileError = MessageBox.Avalonia.MessageBoxManager.GetMessageBoxStandardWindow("Error", "The profile box entry is invalid", ButtonEnum.Ok);
-                await msgBoxProfileError.ShowDialog(this);
-                return;
-            }
-            AddTranscodeItem:
-            ListViewItems.Add(new ListViewData() {
-                Name = Path.GetFileName(SourceDirBox.Text),
-                Label = Path.GetFileName(SourceDirBox.Text),
-                Description = new DescriptionData()
-                {
-                    SourceDir = SourceDirBox.Text,
-                    OutputDir = OutputDirBox.Text,
-                    FileExt = ExtBox.Text.StartsWith(".") ? ExtBox.Text : $".{ExtBox.Text}",
-                    FileCount = Directory.EnumerateFiles(SourceDirBox.Text, $"*{ExtBox.Text}").Count(),
-                    Profile = AppSettings.Profiles[ProfileBox.Text],
-                    State = ItemState.Awaiting,
-                    Task = ItemTask.Transcode,
-                    LabelProgressType = ItemLabelProgressType.None, //have as setting
-                    ProgressBarType = ItemProgressBarType.Directory, //have as setting
-                },
-                //blanchedalmond //mintcream
-                Background = Brushes.LightYellow,
-            });
-            return;
-
-            MsgBoxError:
-            var msgBoxError = MessageBox.Avalonia.MessageBoxManager.GetMessageBoxStandardWindow("Error", "Required textboxes are not all filled out", ButtonEnum.Ok);
-            await msgBoxError.ShowDialog(this);
-        }
-        private async void StartQueue_Click(object sender, RoutedEventArgs e)
-        {
-            //checkffmpegexe
-            /*if (!FFmpeg.CheckFFmpegExecutable(AppSettings.Settings.FFmpegPath))
-            {
-                var msgBoxError = MessageBox.Avalonia.MessageBoxManager.GetMessageBoxStandardWindow("Error", "The ffmpeg/ffprobe processes could not be found");
-                await msgBoxError.ShowDialog(this);
-                return;
-            }*/
-
-            if (String.IsNullOrWhiteSpace(AppSettings.Settings.FFmpegPath))
-            {
-                var msgBoxError = MessageBox.Avalonia.MessageBoxManager.GetMessageBoxStandardWindow("Error", "The ffmpeg directory setting is blank");
-                await msgBoxError.ShowDialog(this);
-            }
-
-            _IsQueueRunning = true;
-
-            AddToQueueBtn.IsEnabled = false;
-            StartQueueBtn.IsEnabled = false;
-            CopySourceCheck.IsEnabled = false;
-            //AutoOverwriteCheck.IsEnabled = false;
-            StopQueueBtn.IsEnabled = true;
-
-            string response = String.Empty;
-            foreach (ListViewData item in ListViewItems)
-            {
-                CurrentItemInProgress = item;
-                item.Description.State = ItemState.Progressing;
-                if (item.Description.Task == ItemTask.Copy)
-                {
-                    Copier = new(new Progress<double>(x => item.Progress = x), item, ViewModel);
-                    response = await Task.Run(() => Copier.CopyDirectory(item.Description.SourceDir, item.Description.OutputDir, "*" + item.Description.FileExt));
-                }
-                else if (item.Description.Task == ItemTask.Trim)
-                {
-                    FFmp = new FFmpeg(AppSettings.Settings.FFmpegPath);
-                    response = await Task.Run(() => FFmp.TrimDir(
-                        sourceDir: item.Description.SourceDir,
-                        outputDir: item.Description.OutputDir,
-                        trimData: item.Description.TrimData,
-                        progress: new Progress<double>(x => item.Progress = x),
-                        item: item,
-                        viewModel: ViewModel
-                    ));
-                }
-                else if (item.Description.Task == ItemTask.Transcode)
-                {
-                    FFmp = new FFmpeg(AppSettings.Settings.FFmpegPath);
-                    Trace.TraceInformation(await Task.Run(() => FFmp.GetFrameCountApproximate(
-                        dir: item.Description.SourceDir,
-                        searchPattern: "*" + item.Description.FileExt,
-                        args: item.Description.Profile.Arguments
-                    )));
-                    response = await Task.Run(() => FFmp.RunProfile(
-                        args: item.Description.Profile.Arguments,
-                        outputDir: item.Description.OutputDir,
-                        ext: item.Description.Profile.OutputExtension,
-                        progress: new Progress<double>(x => item.Progress = x),
-                        viewModel: ViewModel
-                    ));
-                }
-                else
-                {
-                    throw new Exception("Internal Item error: ItemTask enum not properly assigned to Type property of Item Description property");
-                }
-                if (Int32.TryParse(response, out int result) && result == 0)
-                {
-                    item.Check = true;
-                    item.Description.State = ItemState.Complete;
-                }
-                else if (response != String.Empty)
-                {
-                    item.Description.State = ItemState.Stopped;
-                    var msgBoxCancel = MessageBox.Avalonia.MessageBoxManager.GetMessageBoxStandardWindow("Queue Canceled", $"Your queue was canceled on file {response}", ButtonEnum.Ok);
-                    await msgBoxCancel.ShowDialog(this);
-                    goto SKIPDIALOG;
-                }
-                else
-                {
-                    throw new Exception($"Internal task response error: string not valid: \"{response}\"");
-                }
-            }
-
-            var msgBox = MessageBox.Avalonia.MessageBoxManager.GetMessageBoxStandardWindow("Queue Completed", "Your queue has finished");
-            await msgBox.ShowDialog(this);
-
-            SKIPDIALOG:
-            CurrentItemInProgress = null;
-            FFmp = null; //this will stop the method StopProfile() in MainWindow_Closed() from firing
-            Copier = null;
-            _IsQueueRunning = false;
-            AddToQueueBtn.IsEnabled = true;
-            StartQueueBtn.IsEnabled = true;
-            CopySourceCheck.IsEnabled = true;
-            //AutoOverwriteCheck.IsEnabled = true;
-            StopQueueBtn.IsEnabled = false;
-        }
-        private void StopQueue_Click(object sender, RoutedEventArgs e)
-        {
-            if (CurrentItemInProgress!.Description.Task == ItemTask.Transcode || CurrentItemInProgress!.Description.Task == ItemTask.Trim)
-            {
-                if (FFmp is not null)
-                {
-                    FFmp.Stop();
-                }
-                else
-                {
-                    var msgBoxError = MessageBox.Avalonia.MessageBoxManager.GetMessageBoxStandardWindow("Error", "There does not appear to be an FFmpeg instance running", ButtonEnum.Ok);
-                    msgBoxError.ShowDialog(this);
-                }
-            }
-            else if (CurrentItemInProgress!.Description.Task == ItemTask.Copy)
-            {
-                if (Copier is not null)
-                {
-                    //Copier.CancelFlag = true;
-                    Copier.Stop();
-                }
-                else
-                {
-                    var msgBoxError = MessageBox.Avalonia.MessageBoxManager.GetMessageBoxStandardWindow("Error", "There does not appear to be an copier instance running", ButtonEnum.Ok);
-                    msgBoxError.ShowDialog(this);
-                }
-            }
-            else
-            {
-                if (FFmp is null && Copier is null)
-                {
-                    var msgBoxError = MessageBox.Avalonia.MessageBoxManager.GetMessageBoxStandardWindow("Error", "There does not appear to be a queue in progress", ButtonEnum.Ok);
-                    msgBoxError.ShowDialog(this);
-                }
-                else
-                {
-                    FFmp?.Stop();
-                    Copier?.Stop();
-                    var msgBoxError = MessageBox.Avalonia.MessageBoxManager.GetMessageBoxStandardWindow("Error", "There do be was a problem plz tell how?!?!?", ButtonEnum.Ok);
-                    msgBoxError.ShowDialog(this);
                 }
             }
         }

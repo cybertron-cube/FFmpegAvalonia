@@ -116,22 +116,14 @@
 		<TextBlock Text="Profile" Grid.Column="0" Grid.Row="5" VerticalAlignment="Center" HorizontalAlignment="Center"/>
 		<AutoCompleteBox Name="ProfileBox" Items="{Binding ProfileItems}" Text="{Binding ProfileText}" IsTextCompletionEnabled="True" MinimumPrefixLength="0" DragDrop.AllowDrop="False" Grid.Column="1" Grid.Row="5" VerticalAlignment="Center" HorizontalAlignment="Stretch"/>
 
-		<Grid Name="ButtonSec" Grid.Column="0" Grid.Row="5" Grid.ColumnSpan="3">
-			<Button Name="AddToQueueBtn" Content="Add to Queue" Click="AddToQueue_Click" VerticalAlignment="Top" HorizontalAlignment="Center"/>
-			<Button Name="StartQueueBtn" Content="Start Queue" Click="StartQueue_Click" VerticalAlignment="Bottom" HorizontalAlignment="Center" Margin="0, 0, 100, 16"/>
-			<Button Name="StopQueueBtn" Content="Stop Queue" Click="StopQueue_Click" IsEnabled="False" VerticalAlignment="Bottom" HorizontalAlignment="Center" Margin="100, 0, 0, 16">
-				<Button.ContextMenu>
-					<ContextMenu>
-						<MenuItem Header="Yeet"/>
-					</ContextMenu>
-				</Button.ContextMenu>
-			</Button>
+		<Grid Name="ButtonSec" Grid.Column="0" Grid.Row="6" Grid.ColumnSpan="3">
+			<Button Name="AddToQueueBtn" Content="Add to Queue" Command="{Binding AddToQueueCommand}" VerticalAlignment="Top" HorizontalAlignment="Center"/>
+			<Button Name="StartQueueBtn" Content="Start Queue" Command="{Binding StartQueueCommand}" VerticalAlignment="Bottom" HorizontalAlignment="Center" Margin="0, 0, 100, 16"/>
+			<Button Name="StopQueueBtn" Content="Stop Queue" Command="{Binding StopQueueCommand}" VerticalAlignment="Bottom" HorizontalAlignment="Center" Margin="100, 0, 0, 16"/>
 			<CheckBox Name="AutoOverwriteCheck" Content="Overwrite files if prompted" IsChecked="{Binding Path=AutoOverwriteCheck}" VerticalAlignment="Center" HorizontalAlignment="Left" Margin="50, 0, 0, 15"/>
-			<CheckBox Name="CopySourceCheck" Content="Copy files" IsChecked="{Binding Path=CopySourceCheck}" IsEnabled="{Binding Path=CopyCheckIsEnabled}" VerticalAlignment="Top" HorizontalAlignment="Right" Margin="0, 5, 134, 0"/>
-			<CheckBox Name="TrimCheck" Content="Trim files" IsChecked="{Binding Path=TrimCheck}" IsEnabled="{Binding Path=TrimCheckIsEnabled}" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0, 15, 140, 0"/>
 		</Grid>
 		
-		<ListView Name="ProgListView" HorizontalAlignment="Stretch" BorderThickness="0" Padding="0" Grid.Column="0" Grid.Row="6" Grid.ColumnSpan="3">
+		<ListView Name="TaskListView" Items="{Binding TaskListItems}" HorizontalAlignment="Stretch" BorderThickness="0" Padding="0" Grid.Column="0" Grid.Row="7" Grid.ColumnSpan="3">
 			<ListView.ItemTemplate>
 				<DataTemplate>
 					<Border Margin="-12, -8, -12, -11" CornerRadius="0" BorderBrush="SkyBlue" Background="{Binding Path=Background}" BorderThickness="2" Padding="8">
@@ -141,10 +133,10 @@
 								<MenuItem Tag="{Binding Path=Index}" Header="Remove" Click="ListViewItem_Remove"/>
 							</ContextMenu>
 						</Border.ContextMenu>
-						<DockPanel ToolTip.Tip="yeet" Background="{Binding Path=Background}" VerticalAlignment="Stretch" HorizontalAlignment="Stretch" Tag="{Binding Path=Name}">
+						<DockPanel Background="{Binding Path=Background}" VerticalAlignment="Stretch" HorizontalAlignment="Stretch" Tag="{Binding Path=Name}">
 							<CheckBox DockPanel.Dock="Left" IsChecked="{Binding Path=Check}" IsHitTestVisible="False" Focusable="False"/>
-							<Label DockPanel.Dock="Left" Content="{Binding Path=Label}" Margin="0, 0, 10, 0" VerticalContentAlignment="Center"/>
-							<Button Tag="{Binding Path=Index}" DockPanel.Dock="Right" HorizontalAlignment="Center" Margin="10, 0, 0, 0" Click="ListViewItem_Remove">
+							<TextBlock DockPanel.Dock="Left" Text="{Binding Path=Label}" Margin="0, 0, 10, 0" VerticalAlignment="Center"/>
+							<Button DockPanel.Dock="Right" HorizontalAlignment="Center" Margin="10, 0, 0, 0" Click="ListViewItem_Remove">
 								<Canvas Height="10"  Width="10">
 									<Path Stroke="Red" StrokeThickness="2">
 										<Path.Data>
@@ -162,7 +154,7 @@
 									</Path>
 								</Canvas>
 							</Button>
-							<ProgressBar Value="{Binding Path=Progress, Mode=TwoWay}" Maximum="1" Minimum="0"/>
+							<ProgressBar Value="{Binding Progress}" Maximum="1" Minimum="0"/>
 						</DockPanel>
 					</Border>
 				</DataTemplate>

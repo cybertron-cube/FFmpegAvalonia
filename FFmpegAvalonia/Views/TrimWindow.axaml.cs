@@ -7,11 +7,14 @@ using ExtensionMethods;
 using PCLUntils.IEnumerables;
 using System.Linq;
 using System;
+using Avalonia.ReactiveUI;
+using ReactiveUI;
+using Avalonia;
 using System.Diagnostics;
 
 namespace FFmpegAvalonia.Views
 {
-    public partial class TrimWindow : Window
+    public partial class TrimWindow : ReactiveWindow<TrimWindowViewModel>
     {
         public TrimWindow()
         {
@@ -20,6 +23,7 @@ namespace FFmpegAvalonia.Views
             EndTimeCodeTextBox.AddHandler(TextInputEvent, TextInputValidation, RoutingStrategies.Tunnel);
             TimeCodeListBox.SelectionChanged += TimeCodeListBox_SelectionChanged;
             Opened += TrimWindow_Opened;
+            this.WhenActivated(d => d(ViewModel!.SaveExit.Subscribe(Close)));
         }
         private void TrimWindow_Opened(object? sender, EventArgs e)
         {

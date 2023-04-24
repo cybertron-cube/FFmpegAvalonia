@@ -14,14 +14,12 @@ namespace FFmpegAvalonia.ViewModels
     {
         public TrimWindowViewModel()
         {
-            IObservable<bool> canExecute =
+            IObservable<bool> setCanExecute =
                 this.WhenAnyValue(
                     x => x.StartTime,
                     x => x.EndTime,
                     x => x.ListBoxSelectedItem,
-                    (startTime, endTime, listBoxSelectedItem) => (startTime.Length == TextMaxLength || startTime == "0")
-                                                                 && endTime.Length == TextMaxLength
-                                                                 && TimeCode.ToInt(endTime) > TimeCode.ToInt(startTime)
+                    (startTime, endTime, listBoxSelectedItem) => (TimeCode.TryParseToInt(endTime) > TimeCode.TryParseToInt(startTime) || (startTime == "0" && TimeCode.TryParseToInt(endTime) > 0))
                                                                  && listBoxSelectedItem is not null);
             IObservable<bool> removeCanExecute =
                 this.WhenAnyValue(
@@ -32,15 +30,20 @@ namespace FFmpegAvalonia.ViewModels
             {
                 ListBoxSelectedItem!.StartTime = StartTime == "0" ? TimeCode.Parse("00:00:00.000") : TimeCode.Parse(StartTime);
                 ListBoxSelectedItem!.EndTime = TimeCode.Parse(EndTime);
-            }, canExecute);
+            }, setCanExecute);
             RemoveTimeCodeValues = ReactiveCommand.Create(() =>
             {
                 ListBoxSelectedItem!.StartTime = null;
                 ListBoxSelectedItem!.EndTime = null;
             }, removeCanExecute);
+            SaveExit = ReactiveCommand.Create<object?>(() =>
+            {
+                return true;
+            });
         }
         public ReactiveCommand<Unit, Unit> SetTimeCodeValues { get; }
         public ReactiveCommand<Unit, Unit> RemoveTimeCodeValues { get; }
+        public ReactiveCommand<Unit, object?> SaveExit { get; }
         private const int _textMaxLength = 12;
         public static int TextMaxLength { get { return _textMaxLength; } }
         private ObservableCollection<TrimData>? _listBoxItems;
