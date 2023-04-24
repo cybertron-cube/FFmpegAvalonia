@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Avalonia;
 using FFmpegAvalonia.ViewModels;
+using AvaloniaMessageBox;
 
 namespace CyberFileUtils
 {
@@ -123,16 +124,15 @@ namespace CyberFileUtils
                         bool overwrite = false;
                         await Dispatcher.UIThread.InvokeAsync(async () =>
                         {
-                            var msgBox = MessageBox.Avalonia.MessageBoxManager.GetMessageBoxStandardWindow(new MessageBox.Avalonia.DTO.MessageBoxStandardParams
+                            var msgBox = MessageBox.GetMessageBox(new MessageBoxParams
                             {
-                                ButtonDefinitions = ButtonEnum.YesNo,
-                                ContentTitle = "Overwrite",
-                                ContentHeader = "Overwrite?",
-                                ContentMessage = $"The file \"{OutputFilePath}\" already exists, would you like to overwrite it?"
+                                Buttons = MessageBoxButtons.YesNo,
+                                Title = "Overwrite?",
+                                Message = $"The file \"{OutputFilePath}\" already exists, would you like to overwrite it?"
                             });
                             var app = (IClassicDesktopStyleApplicationLifetime)Application.Current!.ApplicationLifetime!;
                             var result = await msgBox.ShowDialog(app.MainWindow);
-                            if (result == ButtonResult.Yes)
+                            if (result == MessageBoxResult.Yes)
                             {
                                 overwrite = true;
                                 File.Delete(OutputFilePath);

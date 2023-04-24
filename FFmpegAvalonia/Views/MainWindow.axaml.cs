@@ -148,9 +148,14 @@ namespace FFmpegAvalonia
             ViewModel.SelectedTaskType = ItemTask.Copy; //fixes error popup not showing when switching to transcode
             if (AppSettings.Settings.FFmpegPath == String.Empty)
             {
-                var msgBoxError = MessageBox.Avalonia.MessageBoxManager.GetMessageBoxStandardWindow("Help!", $"We could not find your ffmpeg path please select it", ButtonEnum.Ok);
+                var msgBoxError = MessageBox.GetMessageBox(new MessageBoxParams
+                {
+                    Title = "Help!",
+                    Message = "We could not find your ffmpeg path please select it",
+                    Buttons = MessageBoxButtons.Ok
+                });
                 var result = await msgBoxError.ShowDialog(this);
-                if (result == ButtonResult.Ok)
+                if (result == MessageBoxResult.Ok)
                 {
                     var dialog = new OpenFolderDialog();
                     var path = await dialog.ShowAsync(this);
@@ -208,12 +213,12 @@ namespace FFmpegAvalonia
         {
             if (ViewModel.IsQueueRunning)
             {
-                var msgBoxError = MessageBox.Avalonia.MessageBoxManager.GetMessageBoxStandardWindow(new MessageBox.Avalonia.DTO.MessageBoxStandardParams
+                var msgBoxError = MessageBox.GetMessageBox(new MessageBoxParams
                 {
-                    ButtonDefinitions = ButtonEnum.Ok,
-                    ContentTitle = "Error",
-                    ContentHeader = "The queue is currently running",
-                    ContentMessage = "If you would like, you can stop the queue"
+                    Title = "Error",
+                    Header = "The queue is currently running",
+                    Message = "If you would like, you can stop the queue",
+                    Buttons = MessageBoxButtons.Ok
                 });
                 await msgBoxError.ShowDialog(this);
                 return;

@@ -208,7 +208,7 @@ namespace FFmpegAvalonia
             var trimDataValidTimeCodes = trimData.Where(x => x.StartTime is not null && x.EndTime is not null);
             await Dispatcher.UIThread.InvokeAsync(() =>
             {
-            item.Description.FileCount = trimDataValidTimeCodes.Count();
+                item.Description.FileCount = trimDataValidTimeCodes.Count();
                 item.Label = $"{item.Name} ({item.Description.CurrentFileNumber}/{item.Description.FileCount})";
             });
             if (outputDir == String.Empty || sourceDir == outputDir)
@@ -248,7 +248,7 @@ namespace FFmpegAvalonia
                     }
                     await Dispatcher.UIThread.InvokeAsync(() =>
                     {
-                    item.Label = $"{item.Name} ({++item.Description.CurrentFileNumber}/{item.Description.FileCount})";
+                        item.Label = $"{item.Name} ({++item.Description.CurrentFileNumber}/{item.Description.FileCount})";
                     });
                 }
                 return "0";
@@ -284,7 +284,7 @@ namespace FFmpegAvalonia
                     }
                     await Dispatcher.UIThread.InvokeAsync(() =>
                     {
-                    item.Label = $"{item.Name} ({++item.Description.CurrentFileNumber}/{item.Description.FileCount})";
+                        item.Label = $"{item.Name} ({++item.Description.CurrentFileNumber}/{item.Description.FileCount})";
                     });
                 }
                 return "0";
@@ -387,15 +387,15 @@ namespace FFmpegAvalonia
                     {
                         await Dispatcher.UIThread.InvokeAsync(async () =>
                         {
-                            var msgBox = MessageBox.Avalonia.MessageBoxManager.GetMessageBoxStandardWindow(new MessageBox.Avalonia.DTO.MessageBoxStandardParams
+                            var msgBox = AvaloniaMessageBox.MessageBox.GetMessageBox(new AvaloniaMessageBox.MessageBoxParams
                             {
-                                ButtonDefinitions = ButtonEnum.YesNo,
-                                ContentTitle = "FFmpeg yes/no prompt",
-                                ContentMessage = line.Replace("[y/N]", "").Trim()
+                                Buttons = AvaloniaMessageBox.MessageBoxButtons.YesNo,
+                                Title = "FFmpeg yes/no prompt",
+                                Message = line.Replace("[y/N]", "").Trim()
                             });
                             var app = (IClassicDesktopStyleApplicationLifetime)Application.Current!.ApplicationLifetime!;
                             var result = await msgBox.ShowDialog(app.MainWindow);
-                            if (result == ButtonResult.Yes)
+                            if (result == AvaloniaMessageBox.MessageBoxResult.Yes)
                             {
                                 await _FFProcess.StandardInput.WriteLineAsync("y");
                             }
