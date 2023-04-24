@@ -142,6 +142,44 @@ namespace FFmpegAvalonia
             else if (e.Data.Contains(DataFormats.FileNames) && e.Data.GetFileNames()!.Count() == 1)
                 textBox.Text = string.Join(Environment.NewLine, e.Data.GetFileNames()!);
         }
+        private void Task_SelectionChanged(object? sender, SelectionChangedEventArgs e) //this can be done a better way
+        {
+            ItemTask itemTask = (ItemTask)e.AddedItems.ElementAt(0);
+            if (itemTask == ItemTask.Transcode)
+            {
+                if (MainGrid.RowDefinitions[5].Height.Value == 67) return;
+                else
+                {
+                    MainGrid.RowDefinitions[5].Height = new GridLength(67);
+                    ProfileBox.IsEnabled = true;
+                }
+            }
+            else
+            {
+                if (MainGrid.RowDefinitions[5].Height.Value == 0) return;
+                else
+                {
+                    MainGrid.RowDefinitions[5].Height = new GridLength(0);
+                    ProfileBox.IsEnabled = false;
+                }
+            }
+            /*if (itemTask == ItemTask.CopyAWS)
+            {
+                if (OutputLabel.Text == "Output Directory")
+                {
+                    OutputLabel.Text = "s3://";
+                }
+                else return;
+            }
+            else
+            {
+                if (OutputLabel.Text == "s3://")
+                {
+                    OutputLabel.Text = "Output Directory";
+                }
+                else return;
+            }*/
+        }
         private async void MainWindow_Opened(object? sender, EventArgs e)
         {
             Trace.TraceInformation("Main Window Opened");
