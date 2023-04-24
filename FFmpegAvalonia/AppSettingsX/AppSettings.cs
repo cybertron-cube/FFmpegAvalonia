@@ -1,6 +1,4 @@
-﻿using Avalonia.Extensions.Controls;
-using ExtensionMethods;
-using HarfBuzzSharp;
+﻿using ExtensionMethods;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -8,9 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
-using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 using System.Xml.Linq;
 
 namespace FFmpegAvalonia.AppSettingsX
@@ -19,16 +15,16 @@ namespace FFmpegAvalonia.AppSettingsX
     {
         internal readonly Dictionary<string, Profile> Profiles;
         internal readonly Settings Settings;
-        private readonly string SettingsXML = Path.Combine(AppContext.BaseDirectory, "settings.xml");
-        private readonly string ProfilesXML = Path.Combine(AppContext.BaseDirectory, "profiles.xml");
-        private readonly bool _IsLinux;
+        private readonly string SettingsXMLPath = Path.Combine(AppContext.BaseDirectory, "settings.xml");
+        private readonly string ProfilesXMLPath = Path.Combine(AppContext.BaseDirectory, "profiles.xml");
+        private readonly bool IsLinux;
         public AppSettings()
         {
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
             {
-                _IsLinux = true;
+                IsLinux = true;
             }
-            if (File.Exists(SettingsXML))
+            if (File.Exists(SettingsXMLPath))
             {
                 Settings = new Settings();
                 ImportSettingsXML();
@@ -42,7 +38,7 @@ namespace FFmpegAvalonia.AppSettingsX
                 Settings = new Settings();
                 FindFFPath();
             }
-            if (File.Exists(ProfilesXML))
+            if (File.Exists(ProfilesXMLPath))
             {
                 Profiles = new Dictionary<string, Profile>();
                 ImportProfilesXML();
@@ -55,15 +51,12 @@ namespace FFmpegAvalonia.AppSettingsX
                 };
             }
         }
-        public void ImportProfilesXML()
+        public void ImportProfilesXML(string text)
         {
-            var text = File.ReadAllText(ProfilesXML);
             XDocument doc = XDocument.Parse(text);
-            var test = doc.Root.Descendants();
             PropertyInfo[] properties = typeof(Profile).GetProperties();
             foreach (XElement element in doc.Root.Descendants("Profile"))
             {
-                //string name;
                 Profile profile = new() { Name = element.Attribute("Name").Value };
                 foreach (PropertyInfo property in properties.Where(x => x.Name != "Name"))
                 {
@@ -72,9 +65,13 @@ namespace FFmpegAvalonia.AppSettingsX
                 Profiles.Add(profile.Name, profile);
             }
         }
-        public void ImportSettingsXML()
+        public void ImportProfilesXML()
         {
-            var text = File.ReadAllText(SettingsXML);
+            var text = File.ReadAllText(ProfilesXMLPath);
+            ImportProfilesXML(text);
+        }
+        public void ImportSettingsXML(string text)
+        {
             XDocument doc = XDocument.Parse(text);
             PropertyInfo[] properties = typeof(Settings).GetProperties();
             foreach (PropertyInfo property in properties)
@@ -92,9 +89,26 @@ namespace FFmpegAvalonia.AppSettingsX
                 property.SetValue(Settings, value);
             }
         }
-        public void ExportProfilesXML()
+        public void ImportSettingsXML()
         {
-            XElement export = new("Profiles", new XAttribute("AppVersion", Assembly.GetExecutingAssembly().GetName().Version!.ToString()));
+            var text = File.ReadAllText(SettingsXMLPath);
+            ImportSettingsXML(text);
+        }
+        public string GetXElementString<T>()
+        {
+            if (typeof(T) == typeof(Profile))
+            {
+                return GetProfilesXElement().ToString();
+            }
+            else if (typeof(T) == typeof(Settings))
+            {
+                return GetSettingsXElement().ToString();
+            }
+            else throw new ArgumentException();
+        }
+        private XElement GetProfilesXElement()
+        {
+            XElement result = new("Profiles", new XAttribute("AppVersion", Assembly.GetExecutingAssembly().GetName().Version!.ToString()));
             PropertyInfo[] properties = typeof(Profile).GetProperties();
             foreach (var profileName in Profiles.Keys)
             {
@@ -103,50 +117,39 @@ namespace FFmpegAvalonia.AppSettingsX
                 {
                     profileElement.Add(new XElement(property.Name, Profiles[profileName].GetPropVal(property.Name)));
                 }
-                export.Add(profileElement);
+                result.Add(profileElement);
             }
-            export.Save(ProfilesXML);
+            return result;
         }
-        public void ExportSettingsXML()
+        private XElement GetSettingsXElement()
         {
-            XElement export = new("Settings", new XAttribute("AppVersion", Assembly.GetExecutingAssembly().GetName().Version!.ToString()));
+            XElement result = new("Settings", new XAttribute("AppVersion", Assembly.GetExecutingAssembly().GetName().Version!.ToString()));
             PropertyInfo[] properties = typeof(Settings).GetProperties();
             foreach (PropertyInfo property in properties)
             {
-                export.Add(new XElement(property.Name, Settings.GetPropVal(property.Name)));
+                result.Add(new XElement(property.Name, Settings.GetPropVal(property.Name)));
             }
-            export.Save(SettingsXML);
+            return result;
+        }
+        public void ExportProfilesXML()
+        {
+            GetProfilesXElement().Save(ProfilesXMLPath);
+        }
+        public void ExportSettingsXML()
+        {
+            GetSettingsXElement().Save(SettingsXMLPath);
         }
         public void Save()
         {
             ExportSettingsXML();
             ExportProfilesXML();
         }
-        private void FindFFPath()
-        {
-            if (_IsLinux)
-            {
-                string pathOne = @"/usr/bin/ffmpeg";
-                if (File.Exists(pathOne))
-                {
-                    Settings.FFmpegPath = Path.GetDirectoryName(pathOne);
-                }
-            }
-            else
-            {
-                string pathOne = @"C:\FFmpeg\ffmpeg.exe";
-                if (File.Exists(pathOne))
-                {
-                    Settings.FFmpegPath = Path.GetDirectoryName(pathOne);
-                }
-            }
-        }
         public void ReadProfiles(string dir)
         {
-            DirectoryInfo dirInfo = new DirectoryInfo(dir);
+            DirectoryInfo dirInfo = new(dir);
             foreach (FileInfo file in dirInfo.GetFiles())
             {
-                string profileName = Path.GetFileNameWithoutExtension(file.FullName);
+                string profileName = file.GetNameWithoutExtension();
                 string args = "";
                 string ext = "";
                 string mo = "";
@@ -230,6 +233,25 @@ namespace FFmpegAvalonia.AppSettingsX
                 else
                 {
                     Trace.TraceInformation("ERROR: Failed to parse file, " + file.FullName);
+                }
+            }
+        }
+        private void FindFFPath()
+        {
+            if (IsLinux)
+            {
+                string pathOne = @"/usr/bin/ffmpeg";
+                if (File.Exists(pathOne))
+                {
+                    Settings.FFmpegPath = Path.GetDirectoryName(pathOne)!;
+                }
+            }
+            else
+            {
+                string pathOne = @"C:\FFmpeg\ffmpeg.exe";
+                if (File.Exists(pathOne))
+                {
+                    Settings.FFmpegPath = Path.GetDirectoryName(pathOne)!;
                 }
             }
         }
