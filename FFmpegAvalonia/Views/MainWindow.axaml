@@ -92,6 +92,10 @@
 				<MenuItem Header="_Profiles" Command="{Binding EditorCommand}" CommandParameter="Profile"/>
 				<MenuItem Header="_Settings" Command="{Binding EditorCommand}" CommandParameter="Settings"/>
 			</MenuItem>
+			<MenuItem Header="_Help">
+				<MenuItem Header="_Check for updates" Command="{Binding	CheckForUpdatesCommand}"/>
+				<MenuItem Header="_Github" Command="{Binding OpenURLCommand}" CommandParameter="https://github.com/Blitznir/FFmpegAvalonia"/>
+			</MenuItem>
 		</Menu>
 		
 		<TextBlock Name="SourceLabel" Text="Source Directory" Grid.Column="0" Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Center"/>

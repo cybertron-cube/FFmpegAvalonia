@@ -122,6 +122,7 @@ namespace FFmpegAvalonia.ViewModels
             }, this.IsValid());
             StopQueueCommand = ReactiveCommand.Create(StopQueue, StartQueueCommand.IsExecuting);
             EditorCommand = ReactiveCommand.CreateFromTask<string>(Editor);
+            CheckForUpdatesCommand = ReactiveCommand.CreateFromTask(CheckForUpdates);
             OpenURLCommand = ReactiveCommand.Create<string>(OpenURL);
             #endregion
             #region Subscriptions
@@ -132,6 +133,7 @@ namespace FFmpegAvalonia.ViewModels
         public ReactiveCommand<Unit, Unit> StartQueueCommand { get; }
         public ReactiveCommand<Unit, Unit> StopQueueCommand { get; }
         public ReactiveCommand<string, Unit> EditorCommand { get; }
+        public ReactiveCommand<Unit, Unit> CheckForUpdatesCommand { get; }
         public ReactiveCommand<string, Unit> OpenURLCommand { get; }
         public Interaction<string, string?> ShowTextEditorDialog;
         public Interaction<TrimWindowViewModel, bool> ShowTrimDialog;
@@ -421,10 +423,81 @@ namespace FFmpegAvalonia.ViewModels
                         });
                     }
         }
+            }
+        }
+        private async Task CheckForUpdates()
+        {
+            string assetIdentifier;
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                assetIdentifier = "win";
+            }
+            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            {
+                assetIdentifier = "linux";
+            }
+            else throw new Exception("OS Platform not supported");
+
+            //catch exceptions
+            var result = await Updater.CheckForUpdatesGitAsync("FFmpegAvalonia",
+                assetIdentifier,
+                "https://api.github.com/repos/Blitznir/FFmpegAvalonia/releases/latest",
+                Assembly.GetExecutingAssembly().GetName().Version!.ToString(3),
+                HttpClient!);
+
+            if (result.UpdateAvailable)
+            {
+                var msgBoxResult = await ShowMessageBox.Handle(new MessageBoxParams
+                {
+                    Title = "Update Detected",
+                    Header = $"Newer version {result.Version} found",
+                    Message = "Would you like to update?",
+                    Buttons = MessageBoxButtons.YesNo,
+                    StartupLocation = WindowStartupLocation.CenterOwner
+                });
+                if (msgBoxResult == MessageBoxResult.Yes)
+                {
+                    //call updater with params
+                    string updaterProcessPath = Path.Combine(AppContext.BaseDirectory, "CybertronUpdater.exe");
+                    Cybertron.GenStatic.GetOSRespectiveExecutablePath(ref updaterProcessPath);
+                    string thisProcessPath;
+                    using (var thisProcess = Process.GetCurrentProcess())
+                    {
+                        thisProcessPath = thisProcess.MainModule.FileName;
+                    }
+                    var processStartInfo = new ProcessStartInfo
+                    {
+                        FileName = updaterProcessPath,
+                    };
+                    processStartInfo.ArgumentList.Add(result.DownloadLink);
+                    Trace.TraceInformation(result.DownloadLink);
+                    processStartInfo.ArgumentList.Add(AppContext.BaseDirectory);
+                    Trace.TraceInformation(AppContext.BaseDirectory);
+                    processStartInfo.ArgumentList.Add(thisProcessPath);
+                    Trace.TraceInformation(thisProcessPath);
+                    processStartInfo.ArgumentList.Add("profiles.xml");
+                    processStartInfo.ArgumentList.Add("settings.xml");
+                    Process.Start(processStartInfo);
+                    Environment.Exit(1);
+                }
+            }
+            else
+            {
+                await ShowMessageBox.Handle(new MessageBoxParams
+                {
+                    Title = "No Update Detected",
+                    Message = "No new update detected",
+                    Buttons = MessageBoxButtons.Ok,
+                    StartupLocation = WindowStartupLocation.CenterOwner
+                });
+            }
+        }
         private void OpenURL(string url)
         {
             
                 }
+        private readonly HttpClient _httpClient = new();
+        public HttpClient HttpClient => _httpClient;
         private FFmpeg? _fFmp;
         public FFmpeg? FFmp
         {
