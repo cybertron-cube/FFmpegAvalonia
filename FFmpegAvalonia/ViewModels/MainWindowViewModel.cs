@@ -50,7 +50,7 @@ namespace FFmpegAvalonia.ViewModels
                     x => x.ExtText,
                     (sourceDirText, extText) => !String.IsNullOrWhiteSpace(extText)
                                                 && !String.IsNullOrWhiteSpace(sourceDirText)
-                                                                && Directory.Exists(sourceDirText)
+                                                && Directory.Exists(sourceDirText)
                                                 && Directory.EnumerateFiles(sourceDirText, $"*{extText}").Any());
             IObservable<bool> profileBoxObserv =
                 this.WhenAnyValue(
@@ -188,7 +188,7 @@ namespace FFmpegAvalonia.ViewModels
             foreach (var file in files)
             {
                 trimData.Add(new TrimData(file));
-        }
+            }
             TrimWindowViewModel trimWindowContext = new() { ListBoxItems = trimData };
             var result = await ShowTrimDialog.Handle(trimWindowContext);
             Trace.TraceInformation("Trim Dialog Result: " + result);
@@ -422,7 +422,7 @@ namespace FFmpegAvalonia.ViewModels
                             StartupLocation = WindowStartupLocation.CenterOwner
                         });
                     }
-        }
+                }
             }
         }
         private async Task CheckForUpdates()
@@ -495,7 +495,7 @@ namespace FFmpegAvalonia.ViewModels
         private void OpenURL(string url)
         {
             
-                }
+        }
         private readonly HttpClient _httpClient = new();
         public HttpClient HttpClient => _httpClient;
         private FFmpeg? _fFmp;
@@ -503,7 +503,7 @@ namespace FFmpegAvalonia.ViewModels
         {
             get => _fFmp;
             set => this.RaiseAndSetIfChanged(ref _fFmp, value);
-            }
+        }
         private ProgressFileCopier? _copier;
         public ProgressFileCopier? Copier
         {
@@ -566,13 +566,13 @@ namespace FFmpegAvalonia.ViewModels
                 if (AppSettings.Profiles.TryGetValue(value, out Profile? profile))
                 {
                     SelectedProfile = profile;
-        }
+                }
                 else if (SelectedProfile == null)
-        {
+                {
                     return;
-        }
+                }
                 else
-            {
+                {
                     SelectedProfile = null;
                 }
             }

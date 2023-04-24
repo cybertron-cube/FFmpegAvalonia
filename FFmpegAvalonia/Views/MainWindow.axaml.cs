@@ -20,6 +20,7 @@ using ReactiveUI;
 using Avalonia.ReactiveUI;
 using FFmpegAvalonia.Views;
 using System.Reactive.Linq;
+using AvaloniaMessageBox;
 
 namespace FFmpegAvalonia
 {
@@ -207,14 +208,6 @@ namespace FFmpegAvalonia
                     this.Close();
                 }
             }
-            if (AppSettings.Profiles.Count > 0)
-            {
-                foreach (var profile in AppSettings.Profiles.Keys)
-                {
-                    ProfileBoxItems.Add(profile);
-                }
-                ProfileBox.Items = ProfileBoxItems;
-            }
             ViewModel.AutoOverwriteCheck = AppSettings.Settings.AutoOverwriteCheck;
 #if DEBUG
             var buttonGrid = this.FindControl<Grid>("ButtonSec");
@@ -263,14 +256,13 @@ namespace FFmpegAvalonia
                     Buttons = MessageBoxButtons.Ok
                 });
                 await msgBoxError.ShowDialog(this);
-                return;
             }
             else
-                {
-            Control control = (Control)sender;
-            ListViewData data = (ListViewData)control.DataContext!;
+            {
+                Control control = (Control)sender;
+                ListViewData data = (ListViewData)control.DataContext!;
                 ViewModel.TaskListItems.Remove(data);
-        }
+            }
         }
 #if DEBUG
         private void Test_Click(object sender, RoutedEventArgs e)
@@ -282,7 +274,7 @@ namespace FFmpegAvalonia
             Debug.WriteLine("TEST");
 
             /*
-             * aws s3 cp /video/ s3://ss-texas/video/ --exclude ‚Äú*‚Äù ‚Äìinclude ‚Äú*.mp4‚Äù ‚Äìrecursive
+             * aws s3 cp /video/ s3://ss-texas/video/ --exclude ì*î ñinclude ì*.mp4î ñrecursive
              * progress?
              * 
              * release?
@@ -303,29 +295,29 @@ namespace FFmpegAvalonia
             if (ViewModel.IsQueueRunning) { return; }
             Control control = (Control)sender;
             ListViewData data = (ListViewData)control.DataContext!;
-            if (data.Description.Task == ItemTask.Trim) 
+            if (data.Description.Task == ItemTask.Trim)
             {
                 ObservableCollection<TrimData> newCollection = new();
                 foreach (TrimData trimData in data.Description.TrimData!)
                 {
                     TrimData trim = new(trimData.FileInfo)
-            {
+                    {
                         StartTime = trimData.StartTime,
                         EndTime = trimData.EndTime
                     };
                     newCollection.Add(trim);
-            }
+                }
                 TrimWindow trimWindow = new() { DataContext = new TrimWindowViewModel() { ListBoxItems = newCollection } };
                 bool result = await trimWindow.ShowDialog<bool>(this);
                 if (result)
-            {
+                {
                     data.Description.TrimData = newCollection;
                     foreach (var item in data.Description.TrimData!)
                     {
-                    Trace.TraceInformation("Name: " + item.FileInfo.FullName);
-                    Trace.TraceInformation("Start Time: " + item.StartTime?.FormattedString);
-                    Trace.TraceInformation("End Time: " + item.EndTime?.FormattedString);
-                }
+                        Trace.TraceInformation("Name: " + item.FileInfo.FullName);
+                        Trace.TraceInformation("Start Time: " + item.StartTime?.FormattedString);
+                        Trace.TraceInformation("End Time: " + item.EndTime?.FormattedString);
+                    }
                 }
             }
         }
