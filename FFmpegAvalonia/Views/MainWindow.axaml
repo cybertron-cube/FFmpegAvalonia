@@ -3,6 +3,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
 		xmlns:ext="using:Avalonia.Extensions.Controls"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+		xmlns:conv="clr-namespace:FFmpegAvalonia.ValueConverters"
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="500"
 		Width="800"
 		Height="500"
@@ -13,6 +14,10 @@
         x:Class="FFmpegAvalonia.MainWindow"
         Title="FFmpeg Avalonia">
 
+	<Window.Resources>
+		<conv:EnumConverter x:Key="enumConverter"/>
+	</Window.Resources>
+	
 	<Window.Styles>
 		<Style Selector="DataValidationErrors">
 			<Setter Property="Template">
@@ -68,6 +73,7 @@
 			<RowDefinition Height="67"></RowDefinition>
 			<RowDefinition Height="67"></RowDefinition>
 			<RowDefinition Height="67"></RowDefinition>
+			<RowDefinition Height="0"></RowDefinition>
 			<RowDefinition Height="85"></RowDefinition>
 			<RowDefinition Height="*"></RowDefinition>
 		</Grid.RowDefinitions>
@@ -98,8 +104,17 @@
 		<Label Content="Extension" Grid.Column="0" Grid.Row="3" VerticalAlignment="Center" HorizontalAlignment="Center"/>
 		<TextBox Name="ExtBox" Watermark=".mkv, .mp4, .mxf" Text="{Binding Path=ExtText}" IsEnabled="{Binding Path=ExtBoxIsEnabled}" DragDrop.AllowDrop="False" Grid.Column="1" Grid.Row="3" Height="20"/>
 
-		<Label Content="Profile" Grid.Column="0" Grid.Row="4" VerticalAlignment="Center" HorizontalAlignment="Center"/>
-		<AutoCompleteBox Name="ProfileBox" IsTextCompletionEnabled="True" MinimumPrefixLength="0" IsEnabled="{Binding Path=ProfileBoxIsEnabled}" DragDrop.AllowDrop="False" Grid.Column="1" Grid.Row="4" VerticalAlignment="Center" HorizontalAlignment="Stretch"/>
+		<TextBlock Text="Task" Grid.Column="0" Grid.Row="4" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+		<ComboBox Items="{Binding TaskTypeItems}" SelectedItem="{Binding SelectedTaskType}" SelectionChanged="Task_SelectionChanged" Grid.Column="1" Grid.Row="4" VerticalAlignment="Center" HorizontalAlignment="Stretch">
+			<ComboBox.ItemTemplate>
+				<DataTemplate>
+					<TextBlock Text="{Binding Converter={StaticResource enumConverter}}"/>
+				</DataTemplate>
+			</ComboBox.ItemTemplate>
+		</ComboBox>
+
+		<TextBlock Text="Profile" Grid.Column="0" Grid.Row="5" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+		<AutoCompleteBox Name="ProfileBox" Items="{Binding ProfileItems}" Text="{Binding ProfileText}" IsTextCompletionEnabled="True" MinimumPrefixLength="0" DragDrop.AllowDrop="False" Grid.Column="1" Grid.Row="5" VerticalAlignment="Center" HorizontalAlignment="Stretch"/>
 
 		<Grid Name="ButtonSec" Grid.Column="0" Grid.Row="5" Grid.ColumnSpan="3">
 			<Button Name="AddToQueueBtn" Content="Add to Queue" Click="AddToQueue_Click" VerticalAlignment="Top" HorizontalAlignment="Center"/>

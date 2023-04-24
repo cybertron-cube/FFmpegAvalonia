@@ -112,7 +112,8 @@ namespace FFmpegAvalonia
         }
         private async void MainWindow_Opened(object? sender, EventArgs e)
         {
-            Trace.TraceInformation("MainWindow Opened");
+            Trace.TraceInformation("Main Window Opened");
+            ViewModel.SelectedTaskType = ItemTask.Copy; //fixes error popup not showing when switching to transcode
             if (AppSettings.Settings.FFmpegPath == String.Empty)
             {
                 var msgBoxError = MessageBox.Avalonia.MessageBoxManager.GetMessageBoxStandardWindow("Help!", $"We could not find your ffmpeg path please select it", ButtonEnum.Ok);
@@ -199,7 +200,7 @@ namespace FFmpegAvalonia
 
             Control control = (Control)sender;
             ListViewData data = (ListViewData)control.DataContext!;
-            ListViewItems.Remove(data);
+                ViewModel.TaskListItems.Remove(data);
         }
 #if DEBUG
         private void Test_Click(object sender, RoutedEventArgs e)

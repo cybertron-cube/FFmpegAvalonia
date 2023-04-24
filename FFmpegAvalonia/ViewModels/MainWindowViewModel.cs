@@ -20,36 +20,46 @@ namespace FFmpegAvalonia.ViewModels
         public MainWindowViewModel()
         {
             IObservable<bool> textBoxObserv =
+            _taskTypeItems = Enum.GetValues(typeof(ItemTask)).Cast<ItemTask>().ToList();
+            _profileItems = new ObservableCollection<string>(appSettings.Profiles.Keys);
+            IObservable<bool> textBoxEqualObserv =
                 this.WhenAnyValue(
                     x => x.SourceDirText,
                     x => x.OutputDirText,
                     (sourceDir, outputDir) => sourceDir != outputDir);
             IObservable<bool> outputBoxObserv =
                 this.WhenAnyValue(
-                    x => x.TrimCheck,
+                    x => x.SelectedTaskType,
                     x => x.OutputDirText,
-                    (trimCheck, outputDirText) => trimCheck || Directory.Exists(outputDirText));
+                    (trimCheck, outputDirText) => trimCheck == ItemTask.Trim || Directory.Exists(outputDirText));
             IObservable<bool> extValidObservNoFiles =
                 this.WhenAnyValue(
                     x => x.SourceDirText,
                     x => x.ExtBoxIsEnabled,
                     x => x.ExtText,
-                    (sourceDirText, extBoxIsEnabled, extText) => !extBoxIsEnabled ||
-                                                                (!String.IsNullOrWhiteSpace(sourceDirText)
+                    (sourceDirText, extText) => !String.IsNullOrWhiteSpace(extText)
+                                                && !String.IsNullOrWhiteSpace(sourceDirText)
                                                                 && Directory.Exists(sourceDirText)
-                                                                && Directory.EnumerateFiles(sourceDirText, $"*{extText}").Any()));
-            IObservable<bool> extValidObserv =
+                                                && Directory.EnumerateFiles(sourceDirText, $"*{extText}").Any());
+            IObservable<bool> profileBoxObserv =
                 this.WhenAnyValue(
-                    x => x.ExtBoxIsEnabled,
-                    x => x.ExtText,
-                    (extBoxIsEnabled, extText) => !extBoxIsEnabled || !String.IsNullOrWhiteSpace(extText));
+                    x => x.SelectedTaskType,
+                    x => x.SelectedProfile,
+                    (selectedItemTask, selectedProfile) => selectedItemTask != ItemTask.Transcode
+                                                           || selectedProfile != null);
+            IObservable<bool> startQueueCanExec =
+                TaskListItems.WhenAnyValue(
+                    x => x.Count,
+                    selector: (taskListCount) => taskListCount > 0);
+            #endregion
+            #region Validation Rules
             this.ValidationRule(
                 vm => vm.SourceDirText,
                 sourceDirText => Directory.Exists(sourceDirText),
                 "You must specify a valid source directory");
             this.ValidationRule(
                 vm => vm.SourceDirText,
-                textBoxObserv,
+                textBoxEqualObserv,
                 "Directories cannot be the same");
             this.ValidationRule(
                 vm => vm.OutputDirText,
@@ -57,11 +67,11 @@ namespace FFmpegAvalonia.ViewModels
                 "You must specify a valid output directory");
             this.ValidationRule(
                 vm => vm.OutputDirText,
-                textBoxObserv,
+                textBoxEqualObserv,
                 "Directories cannot be the same");
             this.ValidationRule(
                 vm => vm.ExtText,
-                extValidObserv,
+                extText => !String.IsNullOrWhiteSpace(extText),
                 "You must specify a valid extension");
             this.ValidationRule(
                 vm => vm.ExtText,
@@ -137,58 +147,47 @@ namespace FFmpegAvalonia.ViewModels
             get => _outputDirText;
             set => this.RaiseAndSetIfChanged(ref _outputDirText, value);
         }
-        private bool _extBoxIsEnabled = true;
-        public bool ExtBoxIsEnabled
-        {
-            get => _extBoxIsEnabled;
-            set => this.RaiseAndSetIfChanged(ref _extBoxIsEnabled, value);
-        }
         private string _extText = String.Empty;
         public string ExtText
         {
             get => _extText;
             set => this.RaiseAndSetIfChanged(ref _extText, value);
         }
-        private bool _profileBoxIsEnabled = true;
-        public bool ProfileBoxIsEnabled
+        private readonly List<ItemTask> _taskTypeItems;
+        public List<ItemTask> TaskTypeItems => _taskTypeItems;
+        private ItemTask _selectedTaskType = ItemTask.Transcode;
+        public ItemTask SelectedTaskType
         {
-            get => _profileBoxIsEnabled;
-            set => this.RaiseAndSetIfChanged(ref _profileBoxIsEnabled, value);
+            get => _selectedTaskType;
+            set => this.RaiseAndSetIfChanged(ref _selectedTaskType, value);
         }
-        private bool _copyCheckIsEnabled = true;
-        public bool CopyCheckIsEnabled
+        private readonly ObservableCollection<string> _profileItems;
+        public ObservableCollection<string> ProfileItems => _profileItems;
+        private Profile? _selectedProfile;
+        public Profile? SelectedProfile
         {
-            get => _copyCheckIsEnabled;
-            set => this.RaiseAndSetIfChanged(ref _copyCheckIsEnabled, value);
+            get => _selectedProfile;
+            set => this.RaiseAndSetIfChanged(ref _selectedProfile, value);
         }
-        private long _copySourceCheck = 0;
-        public bool CopySourceCheck
+        private string _profileText = String.Empty;
+        public string ProfileText
         {
-            get => Interlocked.Read(ref _copySourceCheck) == 1;
+            get => _profileText;
             set
             {
-                Interlocked.Exchange(ref _copySourceCheck, Convert.ToInt64(value));
-                TrimCheckIsEnabled = !value;
-                ProfileBoxIsEnabled = !value;
-                this.RaisePropertyChanged(nameof(CopySourceCheck));
-            }
+                this.RaiseAndSetIfChanged(ref _profileText, value);
+                if (AppSettings.Profiles.TryGetValue(value, out Profile? profile))
+                {
+                    SelectedProfile = profile;
         }
-        private bool _trimCheckIsEnabled = true;
-        public bool TrimCheckIsEnabled
+                else if (SelectedProfile == null)
         {
-            get => _trimCheckIsEnabled;
-            set => this.RaiseAndSetIfChanged(ref _trimCheckIsEnabled, value);
+                    return;
         }
-        private long _trimCheck = 0;
-        public bool TrimCheck
-        {
-            get => Interlocked.Read(ref _trimCheck) == 1;
-            set
+                else
             {
-                Interlocked.Exchange(ref _trimCheck, Convert.ToInt64(value));
-                CopyCheckIsEnabled = !value;
-                ProfileBoxIsEnabled = !value;
-                this.RaisePropertyChanged(nameof(TrimCheck));
+                    SelectedProfile = null;
+                }
             }
         }
         private long _autoOverwriteCheck = 0;
@@ -201,5 +200,7 @@ namespace FFmpegAvalonia.ViewModels
                 this.RaisePropertyChanged(nameof(AutoOverwriteCheck));
             }
         }
+        private readonly ObservableCollection<ListViewData> _taskListItems = new();
+        public ObservableCollection<ListViewData> TaskListItems => _taskListItems;
     }
 }
