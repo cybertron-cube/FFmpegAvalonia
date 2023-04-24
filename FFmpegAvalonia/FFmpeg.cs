@@ -1,15 +1,10 @@
 ﻿using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
-using Avalonia.Extensions.Controls;
-using Avalonia.Media;
 using Avalonia.Threading;
-using MessageBox.Avalonia.Enums;
 using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Net.Http.Headers;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -23,11 +18,11 @@ using System.Linq;
 
 namespace FFmpegAvalonia
 {
-    class FFmpeg
+    public class FFmpeg
     {
         private FFmpegProcess _FFProcess;
         private readonly string _FFmpegPath;
-        private readonly ConcurrentDictionary<string, int> _FilesDict; //maybe not need to be concurrentdict yet
+        private readonly ConcurrentDictionary<string, int> _FilesDict;
         private int _LastFrame;
         private long _CancelQ = 0;
         public bool CancelQ
@@ -39,13 +34,12 @@ namespace FFmpegAvalonia
         private int _TotalDirFrames;
         private double _EndTime;
         private IProgress<double>? _UIProgress;
-        //private bool _IsDisposed;
         private readonly object _DisposeLock = new();
         private MainWindowViewModel? _ViewModel;
         public FFmpeg(string ffmpegdir)
         {
             _FFmpegPath = ffmpegdir;
-            _FFProcess = new FFmpegProcess(_FFmpegPath) ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+            _FFProcess = new FFmpegProcess(_FFmpegPath)
             {
                 StartInfo = DefaultStartInfo(),
                 EnableRaisingEvents = true,
@@ -203,17 +197,20 @@ namespace FFmpegAvalonia
             //_FFProcess.Dispose();
             return "0";
         }
-        /*public string Trim(string startTime, string endTime, string inputFile, string outputFile)
+        public string Trim(string startTime, string endTime, string inputFile, string outputFile)
         {
-
-        }*/
+            throw new NotImplementedException();
+        }
         public async Task<string> TrimDir(ObservableCollection<TrimData> trimData, string sourceDir, string outputDir, IProgress<double> progress, ListViewData item, MainWindowViewModel viewModel)
         {
             _UIProgress = progress;
             _ViewModel = viewModel;
             var trimDataValidTimeCodes = trimData.Where(x => x.StartTime is not null && x.EndTime is not null);
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
             item.Description.FileCount = trimDataValidTimeCodes.Count();
-            item.Label = $"{item.Name} ({++item.Description.CurrentFileNumber}/{item.Description.FileCount})";
+                item.Label = $"{item.Name} ({item.Description.CurrentFileNumber}/{item.Description.FileCount})";
+            });
             if (outputDir == String.Empty || sourceDir == outputDir)
             {
                 foreach (TrimData data in trimDataValidTimeCodes)
@@ -249,7 +246,10 @@ namespace FFmpegAvalonia
                     {
                         _FFProcess.Dispose();
                     }
+                    await Dispatcher.UIThread.InvokeAsync(() =>
+                    {
                     item.Label = $"{item.Name} ({++item.Description.CurrentFileNumber}/{item.Description.FileCount})";
+                    });
                 }
                 return "0";
             }
@@ -282,7 +282,10 @@ namespace FFmpegAvalonia
                     {
                         _FFProcess.Dispose();
                     }
+                    await Dispatcher.UIThread.InvokeAsync(() =>
+                    {
                     item.Label = $"{item.Name} ({++item.Description.CurrentFileNumber}/{item.Description.FileCount})";
+                    });
                 }
                 return "0";
             }

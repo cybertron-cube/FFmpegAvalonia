@@ -1,7 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Input;
 using FFmpegAvalonia.ViewModels;
-using System.Collections.ObjectModel;
 using Avalonia.Interactivity;
 using ExtensionMethods;
 using PCLUntils.IEnumerables;

@@ -1,102 +1,45 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Text;
-using System.Threading.Tasks;
-using static FFmpegAvalonia.MainWindow;
+﻿using ReactiveUI;
+using System;
 
 namespace FFmpegAvalonia.ViewModels
 {
-    internal class ListViewData : INotifyPropertyChanged
+    public class ListViewData : ReactiveObject
     {
-        public event PropertyChangedEventHandler? PropertyChanged;
-        private void RaisePropertyChanged([CallerMemberName] string? propertyName = null)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        }
-        private string _Name = string.Empty;
+        private string _name = String.Empty;
         public string Name
         {
-            get { return _Name; }
-            set
-            {
-                if (_Name != value)
-                {
-                    _Name = value;
-                    RaisePropertyChanged(nameof(Name));
+            get => _name;
+            set => this.RaiseAndSetIfChanged(ref _name, value);
                 }
-            }
-        }
-        private readonly object LabelLock = new();
-        private string _Label = string.Empty;
+        private string _label = String.Empty;
         public string Label
         {
-            get { return _Label; }
-            set
-            {
-                if (_Label != value)
-                {
-                    lock (LabelLock)
-                    {
-                        _Label = value;
-                        RaisePropertyChanged(nameof(Label));
+            get => _label;
+            set => this.RaiseAndSetIfChanged(ref _label, value);
                     }
-                }
-            }
-        }
-        private DescriptionData _Description = new();
+        private DescriptionData _description = new();
         public DescriptionData Description
         {
-            get { return _Description; }
-            set
-            {
-                if (_Description != value)
-                {
-                    _Description = value;
-                    RaisePropertyChanged(nameof(Description));
+            get => _description;
+            set => this.RaiseAndSetIfChanged(ref _description, value);
                 }
-            }
-        }
-        private bool _Check;
+        private bool _check;
         public bool Check
         {
-            get { return _Check; }
-            set
-            {
-                if (_Check != value)
-                {
-                    _Check = value;
-                    RaisePropertyChanged(nameof(Check));
+            get => _check;
+            set => this.RaiseAndSetIfChanged(ref _check, value);
                 }
-            }
-        }
-        private double _Progress;
+        private double _progress;
         public double Progress
         {
-            get { return _Progress; }
-            set
-            {
-                if (_Progress != value)
-                {
-                    _Progress = value;
-                    RaisePropertyChanged(nameof(Progress));
+            get => _progress;
+            set => this.RaiseAndSetIfChanged(ref _progress, value);
                 }
-            }
-        }
-        private Avalonia.Media.IBrush _Background = Avalonia.Media.Brushes.Transparent;
+        private Avalonia.Media.IBrush _background = Avalonia.Media.Brushes.Transparent;
         public Avalonia.Media.IBrush Background
         {
-            get { return _Background; }
-            set
-            {
-                if (value != _Background)
-                {
-                    _Background = value;
-                    RaisePropertyChanged(nameof(Background));
-                }
-            }
+            get => _background;
+            set => this.RaiseAndSetIfChanged(ref _background, value);
         }
     }
 }

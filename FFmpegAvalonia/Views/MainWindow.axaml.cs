@@ -1,44 +1,25 @@
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Controls.Primitives;
 using Avalonia.Input;
-using Avalonia.Rendering.SceneGraph;
 using Avalonia.Interactivity;
-using Avalonia.Markup.Xaml;
 using System;
 using System.Diagnostics;
 using System.Threading.Tasks;
-using Avalonia.Rendering;
 using System.Text.RegularExpressions;
 using System.Collections.ObjectModel;
-using Avalonia.Extensions.Controls;
-using System.Collections.Generic;
-using System.Collections;
-using System.Drawing.Printing;
 using System.IO;
-using System.ComponentModel;
-using System.Runtime.CompilerServices;
-using MessageBox.Avalonia.Enums;
-using Avalonia.Controls.ApplicationLifetimes;
-using Avalonia.Controls.Shapes;
 using Path = System.IO.Path;
 using Avalonia.Layout;
-using CyberFileUtils;
-using ExtensionMethods;
 using PCLUntils.IEnumerables;
-using Avalonia.Media;
 using System.Reflection;
-using MessageBox.Avalonia.DTO;
 using System.Linq;
-using System.Text;
 using FFmpegAvalonia.ViewModels;
 using FFmpegAvalonia.AppSettingsX;
 using Avalonia.VisualTree;
-using ReactiveUI.Validation.Extensions;
 using ReactiveUI;
 using Avalonia.ReactiveUI;
-using Avalonia.Controls.Mixins;
 using FFmpegAvalonia.Views;
+using System.Reactive.Linq;
 
 namespace FFmpegAvalonia
 {
@@ -49,13 +30,16 @@ namespace FFmpegAvalonia
         private bool _confirmShutdown;
         public MainWindow()
         {
-            //Trace.Listeners.Add(new TextWriterTraceListener(Path.Combine(AppContext.BaseDirectory, "debug.log")));
-            //MIGHT WANT TO CHECK IF DEBUG FILE IS GETTING TOO BIG AND CLEAR IT UP
-            var textWriter = new TextWriterTraceListener(Path.Combine(AppContext.BaseDirectory, "debug.log"));
-            var listener = new ConsoleTraceListener()
+            FileInfo logPath = new(Path.Combine(AppContext.BaseDirectory, "debug.log"));
+            if (logPath.Exists && logPath.Length > 20971520)
+            {
+                logPath.Delete();
+            }
+            TextWriterTraceListener textWriter = new(logPath.FullName);
+            ConsoleTraceListener listener = new()
             {
                 Writer = textWriter.Writer,
-                TraceOutputOptions = TraceOptions.DateTime// | TraceOptions.Timestamp | TraceOptions.Callstack, ///MAYBE USE THIS WITH PROGRESS ENUM???
+                TraceOutputOptions = TraceOptions.DateTime
             };
             Trace.Listeners.Add(listener);
             Trace.AutoFlush = true;
@@ -68,9 +52,12 @@ namespace FFmpegAvalonia
             this.WhenActivated(d => d(ViewModel!.ShowMessageBox.RegisterHandler(DoShowMessageBoxAsync)));//
             AddHandler(DragDrop.DropEvent, Drop!);
             AddHandler(DragDrop.DragOverEvent, DragOver!);
-            ProgListView.Items = ListViewItems;
-            DataContext = ViewModel;
-            Title = "FFmpeg Avalonia " + Assembly.GetExecutingAssembly().GetName().Version!.ToString();
+            Closing += MainWindow_Closing;
+#if DEBUG
+            Title = $"FFmpeg Avalonia Debug {Assembly.GetExecutingAssembly().GetName().Version}";
+#else
+            Title = $"FFmpeg Avalonia {Assembly.GetExecutingAssembly().GetName().Version!.ToString(3)}";
+#endif
         }
 
         private async void MainWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
@@ -127,14 +114,8 @@ namespace FFmpegAvalonia
         private void DragOver(object sender, DragEventArgs e)
         {
             Debug.WriteLine("DragOver");
-
-            Point pt = e.GetPosition((IVisual)sender);
-            var test = SourceDirBox.HitTestCustom(pt);
-            Debug.WriteLine(test);
-
             // Only allow Copy or Link as Drop Operations.
             e.DragEffects = e.DragEffects & (DragDropEffects.Copy | DragDropEffects.Link);
-
             // Only allow if the dragged data contains text or filenames.
             if (!e.Data.Contains(DataFormats.Text) && !e.Data.Contains(DataFormats.FileNames))
                 e.DragEffects = DragDropEffects.None;
@@ -203,10 +184,14 @@ namespace FFmpegAvalonia
         }
         private void MainWindow_Closed(object? sender, EventArgs e)
         {
-            FFmp?.Stop();
-            Copier?.Stop();
+            Trace.TraceInformation("Stopping FFmpeg process if running...");
+            ViewModel.FFmp?.Stop();
+            Trace.TraceInformation("Stopping copier instance if running...");
+            ViewModel.Copier?.Stop();
+            Trace.TraceInformation("Saving settings...");
             AppSettings.Settings.AutoOverwriteCheck = ViewModel.AutoOverwriteCheck;
             AppSettings.Save();
+            Trace.TraceInformation("Exiting...");
         }
         private async void Browse_Click(object sender, RoutedEventArgs e)
         {
@@ -219,7 +204,7 @@ namespace FFmpegAvalonia
                 textBox.Text = result;
             }
         }
-        private async void ListViewItem_Remove(object sender, RoutedEventArgs e)
+        private async void ListViewItem_Remove(object sender, RoutedEventArgs e) //BIND ENABLED INSTEAD
         {
             if (ViewModel.IsQueueRunning)
             {
@@ -233,41 +218,40 @@ namespace FFmpegAvalonia
                 await msgBoxError.ShowDialog(this);
                 return;
             }
-            //CHECK IF THAT ITEM IS CURRENTLY PROGRESSING
-            /*if (CurrentItemInProgress is not null && CurrentItemInProgress.Name == itemName)
-            {
-                var msgBoxError = MessageBox.Avalonia.MessageBoxManager.GetMessageBoxStandardWindow(new MessageBox.Avalonia.DTO.MessageBoxStandardParams
+            else
                 {
-                    ButtonDefinitions = ButtonEnum.Ok,
-                    ContentTitle = "Error",
-                    ContentHeader = "That item is currently being processed",
-                    ContentMessage = "If you would like, you can stop the queue"
-                });
-                await msgBoxError.ShowDialog(this);
-                return;
-            }*/
-            //CHECK IF ITEM HAS BEEN PROCESSED
-
             Control control = (Control)sender;
             ListViewData data = (ListViewData)control.DataContext!;
                 ViewModel.TaskListItems.Remove(data);
         }
+        }
 #if DEBUG
         private void Test_Click(object sender, RoutedEventArgs e)
         {
-            //AppSettings.ReadProfiles(@"G:\OBS\10 Transfer Orders\import profiles");
-            /*DirectoryInfo dirinfo = new(@"G:\OBS\10 Transfer Orders\import profiles");
-            var files = dirinfo.EnumerateFiles("**");
-            foreach (var file in files)
-            {
-                Debug.WriteLine(file.Name);
-            }*/
-            SourceDirBox.Text = @"G:\OBS\10 Transfer Orders\test\out";
-            ExtBox.Text = "mkv";
-            TrimCheck.IsChecked = true;
+            ViewModel.SourceDirText = @"G:\OBS\10 Transfer Orders\test";
+            ViewModel.OutputDirText = @"G:\OBS\10 Transfer Orders\test\out";
+            ViewModel.ExtText = "mkv";
+            ViewModel.SelectedTaskType = ItemTask.Trim;
+            Debug.WriteLine("TEST");
+
+            /*
+             * aws s3 cp /video/ s3://ss-texas/video/ --exclude “*” –include “*.mp4” –recursive
+             * progress?
+             * 
+             * release?
+             * 
+             * details panel
+             * hash
+             * 3 log files
+             * 
+             * use command for listviewitem_remove
+             * task_listselectionchanged improvement
+             * stopqueue only 2 lines ffmp?.stop and copier?.stop
+             * fully implement cancellation token
+             */
         }
 #endif
-        private async void ListViewItem_Edit(object sender, RoutedEventArgs e)
+        private async void ListViewItem_Edit(object sender, RoutedEventArgs e) //BIND ENABLED INSTEAD
         {
             if (ViewModel.IsQueueRunning) { return; }
             Control control = (Control)sender;

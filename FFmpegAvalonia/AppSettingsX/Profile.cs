@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace FFmpegAvalonia.AppSettingsX
 {
-    internal class Profile : PropertyReflection //maybe add position element
+    public class Profile : PropertyReflection //maybe add position element
     {
         public string Name { get; set; } = "";
         public string Arguments { get; set; } = "";

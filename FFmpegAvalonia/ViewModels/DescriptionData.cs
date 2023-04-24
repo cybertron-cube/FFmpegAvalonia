@@ -1,18 +1,12 @@
 ﻿using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Linq;
-using System.Linq.Expressions;
-using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 using FFmpegAvalonia.AppSettingsX;
 using ReactiveUI;
 
 namespace FFmpegAvalonia.ViewModels
 {
-    internal class DescriptionData : ReactiveObject
+    public class DescriptionData : ReactiveObject
     {
         private string _sourceDir = String.Empty;
         public string SourceDir

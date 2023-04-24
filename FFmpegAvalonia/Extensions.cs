@@ -1,11 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Reflection;
-using System.Security;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace ExtensionMethods
 {
@@ -112,7 +107,7 @@ namespace ExtensionMethods
         public static StringBuilder ToLower(this StringBuilder sb)
         {
             StringBuilder returnSb = new();
-            for (int i = 0; i < sb.Length - 1; i++)
+            for (int i = 0; i <= sb.Length - 1; i++)
             {
                 returnSb.Append(char.ToLower(sb[i]));
             }
@@ -182,11 +177,9 @@ namespace ExtensionMethods
                 file.MoveTo(Path.Combine(file.Directory.FullName, newName));
             }
         }
-        public static string NameWithoutExtension(this FileInfo file)
+        public static string GetNameWithoutExtension(this FileInfo file)
         {
             return Path.GetFileNameWithoutExtension(file.FullName);
         }
-        //extend FileInfo with NameWithoutExtension() -- use in ReadProfiles method of settings.cs
-
     }
 }

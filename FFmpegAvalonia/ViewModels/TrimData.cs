@@ -1,11 +1,6 @@
 ﻿using ExtensionMethods;
 using ReactiveUI;
-using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FFmpegAvalonia.ViewModels
 {
@@ -23,7 +18,7 @@ namespace FFmpegAvalonia.ViewModels
         }
         public string Name
         {
-            get => _fileInfo.NameWithoutExtension();
+            get => _fileInfo.GetNameWithoutExtension();
         }
         private TimeCode? _startTime;
         public TimeCode? StartTime

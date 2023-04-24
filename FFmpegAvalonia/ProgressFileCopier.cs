@@ -1,12 +1,7 @@
 ﻿using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Threading;
-using MessageBox.Avalonia.Enums;
 using System;
-using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
-using System.Linq;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Avalonia;
@@ -17,7 +12,7 @@ namespace CyberFileUtils
     public delegate void ProgressChangeDelegate(double Percentage);
     public delegate void Completedelegate();
 
-    class ProgressFileCopier
+    public class ProgressFileCopier
     {
         private string SourceFilePath = String.Empty;
         private string OutputFilePath = String.Empty;
