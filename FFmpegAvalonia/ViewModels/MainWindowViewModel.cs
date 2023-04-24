@@ -67,6 +67,63 @@ namespace FFmpegAvalonia.ViewModels
                 vm => vm.ExtText,
                 extValidObservNoFiles,
                 "Source doesn't contain files with this extension");
+            ShowTextEditorDialog = new Interaction<string, string?>();
+            EditorCommand = ReactiveCommand.CreateFromTask<string>(Editor);
+        public ReactiveCommand<string, Unit> EditorCommand { get; }
+        public Interaction<string, string?> ShowTextEditorDialog;
+        }
+        private async Task Editor(string controlName) //very little makes sense about this command (it's atrocious) but I felt like doing it this way just cause :) honestly this whole project is probably atrocious but I'm learning :)
+        {
+            string xml;
+            if (controlName == nameof(Settings))
+            {
+                xml = AppSettings.GetXElementString<Settings>();
+            }
+            else if (controlName == nameof(Profile))
+            {
+                xml = AppSettings.GetXElementString<Profile>();
+            }
+            else return;
+            string? result = await ShowTextEditorDialog.Handle(xml);
+            if (result != null)
+            {
+                if (controlName == nameof(Settings))
+                {
+                    try
+                    {
+                        AppSettings.ImportSettingsXML(result);
+                    }
+                    catch
+                    {
+                        await ShowMessageBox.Handle(new MessageBoxParams
+                        {
+                            Title = "Error",
+                            Message = "The xml could not be parsed",
+                            Buttons = MessageBoxButtons.Ok,
+                            StartupLocation = WindowStartupLocation.CenterOwner
+                        });
+                    }
+                }
+                else if (controlName == nameof(Profile))
+                {
+                    try
+                    {
+                        AppSettings.ImportProfilesXML(result); 
+                    }
+                    catch
+                    {
+                        await ShowMessageBox.Handle(new MessageBoxParams
+                        {
+                            Title = "Error",
+                            Message = "The xml could not be parsed",
+                            Buttons = MessageBoxButtons.Ok,
+                            StartupLocation = WindowStartupLocation.CenterOwner
+                        });
+                    }
+                }
+            }
+        }
+        }
         }
         private string _sourceDirText = String.Empty;
         public string SourceDirText

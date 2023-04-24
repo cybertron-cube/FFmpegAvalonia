@@ -82,8 +82,8 @@
 				<MenuItem Header="_Exit"/>
 			</MenuItem>
 			<MenuItem Header="_Edit">
-				<MenuItem Header="_Profiles"/>
-				<MenuItem Header="_Settings"/>
+				<MenuItem Header="_Profiles" Command="{Binding EditorCommand}" CommandParameter="Profile"/>
+				<MenuItem Header="_Settings" Command="{Binding EditorCommand}" CommandParameter="Settings"/>
 			</MenuItem>
 		</Menu>
 		

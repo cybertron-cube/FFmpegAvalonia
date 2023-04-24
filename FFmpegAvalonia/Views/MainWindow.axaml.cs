@@ -66,6 +66,7 @@ namespace FFmpegAvalonia
             Trace.Listeners.Add(listener);
             Trace.AutoFlush = true;
             InitializeComponent();
+            this.WhenActivated(d => d(ViewModel!.ShowTextEditorDialog.RegisterHandler(DoShowTextEditorDialogAsync))); //COMBINE these into one line????
             AddHandler(DragDrop.DropEvent, Drop!);
             AddHandler(DragDrop.DragOverEvent, DragOver!);
             ProgListView.Items = ListViewItems;
