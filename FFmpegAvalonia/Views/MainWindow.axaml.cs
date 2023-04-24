@@ -187,6 +187,10 @@ namespace FFmpegAvalonia
             testButton.Click += Test_Click!;
 #endif
         }
+        private void MenuItemClose_Click(object? sender, RoutedEventArgs e)
+        {
+            this.Close();
+        }
         private void MainWindow_Closed(object? sender, EventArgs e)
         {
             Trace.TraceInformation("Stopping FFmpeg process if running...");

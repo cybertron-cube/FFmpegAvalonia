@@ -86,7 +86,7 @@
 				</MenuItem>
 				<MenuItem Header="_MakeHash"/>
 				<Separator/>
-				<MenuItem Header="_Exit"/>
+				<MenuItem Name="MenuItemClose" Header="_Exit" Click="MenuItemClose_Click"/>
 			</MenuItem>
 			<MenuItem Header="_Edit">
 				<MenuItem Header="_Profiles" Command="{Binding EditorCommand}" CommandParameter="Profile"/>
