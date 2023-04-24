@@ -267,29 +267,22 @@ namespace FFmpegAvalonia
             ListViewData data = (ListViewData)control.DataContext!;
             if (data.Description.Task == ItemTask.Trim) 
             {
-                TrimWindow trimWindow = new() { DataContext = new TrimWindowViewModel() { ListBoxItems = data.Description.TrimData } };
-                await trimWindow.ShowDialog(this);
-                foreach (var item in data.Description.TrimData!)
+                ObservableCollection<TrimData> newCollection = new();
+                foreach (TrimData trimData in data.Description.TrimData!)
                 {
-                    Trace.TraceInformation("Name: " + item.FileInfo.FullName);
-                    Trace.TraceInformation("Start Time: " + item.StartTime?.FormattedString);
-                    Trace.TraceInformation("End Time: " + item.EndTime?.FormattedString);
-                }
-            }
-        }
-        private async void AddToQueue_Click(object sender, RoutedEventArgs e)
-        {
-            if (!ViewModel.ValidationContext.IsValid)
+                    TrimData trim = new(trimData.FileInfo)
             {
-                goto MsgBoxError;
+                        StartTime = trimData.StartTime,
+                        EndTime = trimData.EndTime
+                    };
+                    newCollection.Add(trim);
             }
-            if (CopySourceCheck.IsChecked.NullIsFalse())
+                TrimWindow trimWindow = new() { DataContext = new TrimWindowViewModel() { ListBoxItems = newCollection } };
+                bool result = await trimWindow.ShowDialog<bool>(this);
+                if (result)
             {
-                ListViewItems.Add(new ListViewData()
-                {
-                    Name = Path.GetFileName(SourceDirBox.Text),
-                    Label = Path.GetFileName(SourceDirBox.Text),
-                    Description = new DescriptionData()
+                    data.Description.TrimData = newCollection;
+                    foreach (var item in data.Description.TrimData!)
                     {
                     Trace.TraceInformation("Name: " + item.FileInfo.FullName);
                     Trace.TraceInformation("Start Time: " + item.StartTime?.FormattedString);
