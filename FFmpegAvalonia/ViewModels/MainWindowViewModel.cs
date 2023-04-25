@@ -494,7 +494,27 @@ namespace FFmpegAvalonia.ViewModels
         }
         private void OpenURL(string url)
         {
-            
+            try
+            {
+                Process.Start(url);
+            }
+            catch
+            {
+                if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                {
+                    url = url.Replace("&", "^&");
+                    Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+                }
+                else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+                {
+                    Process.Start("xdg-open", url);
+                }
+                else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+                {
+                    Process.Start("open", url);
+                }
+                else throw;
+            }
         }
         private readonly HttpClient _httpClient = new();
         public HttpClient HttpClient => _httpClient;
