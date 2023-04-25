@@ -38,20 +38,33 @@ namespace FFmpegAvalonia.ViewModels
                 this.WhenAnyValue(
                     x => x.SourceDirText,
                     x => x.OutputDirText,
-                    (sourceDir, outputDir) => sourceDir != outputDir);
+                    x => x.SelectedTaskType,
+                    (sourceDir, outputDir, itemTask) => itemTask == ItemTask.Trim
+                                                        || itemTask == ItemTask.Checksum
+                                                        || sourceDir != outputDir);
             IObservable<bool> outputBoxObserv =
                 this.WhenAnyValue(
                     x => x.SelectedTaskType,
                     x => x.OutputDirText,
-                    (trimCheck, outputDirText) => trimCheck == ItemTask.Trim || Directory.Exists(outputDirText));
+                    (trimCheck, outputDirText) => trimCheck == ItemTask.Trim
+                                                  || trimCheck == ItemTask.Checksum
+                                                  || Directory.Exists(outputDirText));
+            IObservable<bool> extBoxObserv =
+                this.WhenAnyValue(
+                    x => x.ExtText,
+                    x => x.SelectedTaskType,
+                    (extText, itemTask) => itemTask == ItemTask.Checksum
+                                           || !String.IsNullOrWhiteSpace(extText));
             IObservable<bool> extValidObservNoFiles =
                 this.WhenAnyValue(
                     x => x.SourceDirText,
                     x => x.ExtText,
-                    (sourceDirText, extText) => !String.IsNullOrWhiteSpace(extText)
-                                                && !String.IsNullOrWhiteSpace(sourceDirText)
-                                                && Directory.Exists(sourceDirText)
-                                                && Directory.EnumerateFiles(sourceDirText, $"*{extText}").Any());
+                    x => x.SelectedTaskType,
+                    (sourceDirText, extText, itemTask) => itemTask == ItemTask.Checksum 
+                                                          || (!String.IsNullOrWhiteSpace(extText)
+                                                              && Directory.Exists(sourceDirText)
+                                                              && Directory.EnumerateFiles(sourceDirText, $"*{extText}").Any())
+                                                             );
             IObservable<bool> profileBoxObserv =
                 this.WhenAnyValue(
                     x => x.SelectedTaskType,
@@ -82,7 +95,7 @@ namespace FFmpegAvalonia.ViewModels
                 "Directories cannot be the same");
             this.ValidationRule(
                 vm => vm.ExtText,
-                extText => !String.IsNullOrWhiteSpace(extText),
+                extBoxObserv,
                 "You must specify a valid extension");
             this.ValidationRule(
                 vm => vm.ExtText,
@@ -117,6 +130,12 @@ namespace FFmpegAvalonia.ViewModels
                         break;
                     case ItemTask.Trim:
                         await AddTrim();
+                        break;
+                    case ItemTask.UploadAWS:
+                        AddUploadAWS();
+                        break;
+                    case ItemTask.Checksum:
+                        AddChecksum();
                         break;
                 }
             }, this.IsValid());
@@ -218,6 +237,47 @@ namespace FFmpegAvalonia.ViewModels
                     Background = Brushes.BlanchedAlmond
                 });
             }
+        }
+        private void AddUploadAWS()
+        {
+            TaskListItems.Add(new ListViewData()
+            {
+                Name = Path.GetFileName(SourceDirText),
+                Label = Path.GetFileName(SourceDirText),
+                Description = new DescriptionData()
+                {
+                    SourceDir = SourceDirText,
+                    OutputDir = OutputDirText,
+                    FileExt = ExtText.StartsWith(".") ? ExtText : $".{ExtText}",
+                    FileCount = Directory.EnumerateFiles(SourceDirText, $"*{ExtText}").Count(),
+                    State = ItemState.Awaiting,
+                    Task = ItemTask.UploadAWS,
+                    LabelProgressType = ItemLabelProgressType.None,
+                    ProgressBarType = ItemProgressBarType.None,
+                },
+                Background = Brushes.Azure,
+            });
+        }
+        private void AddChecksum()
+        {
+            TaskListItems.Add(new ListViewData()
+            {
+                Name = Path.GetFileName(SourceDirText),
+                Label = Path.GetFileName(SourceDirText),
+                Description = new DescriptionData()
+                {
+                    SourceDir = SourceDirText,
+                    OutputDir = OutputDirText == String.Empty ? SourceDirText : OutputDirText,
+                    //FileExt = ExtText.StartsWith(".") ? ExtText : $".{ExtText}",
+                    FileExt = ExtText == String.Empty ? "*" : ExtText.StartsWith(".") ? ExtText : $".{ExtText}",
+                    FileCount = Directory.EnumerateFiles(SourceDirText, $"*{ExtText}").Count(),
+                    State = ItemState.Awaiting,
+                    Task = ItemTask.Checksum,
+                    LabelProgressType = ItemLabelProgressType.TotalFileCount,
+                    ProgressBarType = ItemProgressBarType.File,
+                },
+                Background = Brushes.AntiqueWhite,
+            });
         }
         private async Task StartQueueAsync(CancellationToken ct)
         {
@@ -343,6 +403,20 @@ namespace FFmpegAvalonia.ViewModels
                         response = "";
                     }
                     else response = "0";
+                }
+                else if (item.Description.Task == ItemTask.Checksum)
+                {
+                    var hash = new Cybertron.Hashing();
+                    hash.OnNextFile += (fileName) =>
+                    {
+                        item.Progress = item.Description.CurrentFileNumber++ / (double)item.Description.FileCount;
+                        item.Label = $"{fileName} ({item.Description.CurrentFileNumber}/{item.Description.FileCount})";
+                    };
+                    response = await hash.DirectoryHashAsync(item.Description.SourceDir,
+                        Path.Combine(item.Description.OutputDir, "hash_list.txt"),
+                        $"*{item.Description.FileExt}",
+                        Cybertron.Hashing.HashingAlgorithmTypes.MD5,
+                        ct);
                 }
                 else
                 {

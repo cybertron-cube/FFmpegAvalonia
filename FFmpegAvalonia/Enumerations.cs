@@ -12,6 +12,7 @@ public enum ItemTask
     Copy = 1,
     Trim = 2,
     UploadAWS = 3,
+    Checksum = 4,
 }
 public enum ItemLabelProgressType
 {
@@ -29,6 +30,7 @@ public enum ItemLabelProgressType
 }
 public enum ItemProgressBarType
 {
-    File = 0,
-    Directory = 1,
+    None = 0,
+    File = 1,
+    Directory = 2,
 }

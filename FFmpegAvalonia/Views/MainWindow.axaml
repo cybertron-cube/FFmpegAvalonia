@@ -84,7 +84,9 @@
 					<MenuItem Name="SourceDirBrowseMenu" Header="_Source Dir" ToolTip.Tip="Open source directory" Click="Browse_Click"/>
 					<MenuItem Name="OutputDirBrowseMenu" Header="_Output Dir" ToolTip.Tip="Open output directory" Click="Browse_Click"/>
 				</MenuItem>
+				<!--
 				<MenuItem Header="_MakeHash"/>
+				-->
 				<Separator/>
 				<MenuItem Name="MenuItemClose" Header="_Exit" Click="MenuItemClose_Click"/>
 			</MenuItem>
