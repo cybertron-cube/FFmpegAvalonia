@@ -221,7 +221,7 @@ namespace FFmpegAvalonia.ViewModels
         }
         private async Task StartQueueAsync(CancellationToken ct)
         {
-            string response = await Task.Run(ProcessTaskItems);
+            string response = await Task.Run(() => ProcessTaskItems(ct));
             if (response != "0" && ct.IsCancellationRequested) //Queue stopped
             {
                 Trace.TraceInformation($"Queue was canceled on file \"{response}\"");
@@ -256,7 +256,7 @@ namespace FFmpegAvalonia.ViewModels
                 });
             }
         }
-        private async Task<string> ProcessTaskItems()
+        private async Task<string> ProcessTaskItems(CancellationToken ct)
         {
             string response = String.Empty;
             foreach (ListViewData item in TaskListItems)
@@ -308,6 +308,42 @@ namespace FFmpegAvalonia.ViewModels
                         viewModel: this
                     );
                 }
+                else if (item.Description.Task == ItemTask.UploadAWS)
+                {
+                    if (item.Description.OutputDir.StartsWith("s3://"))
+                    {
+                        item.Description.OutputDir = item.Description.OutputDir.Replace("s3://", "");
+                    }
+                    if (!item.Description.OutputDir.EndsWith("/"))
+                    {
+                        item.Description.OutputDir += "/";
+                    }
+                    var terminalProcess = Cybertron.GenStatic.GetOSRespectiveTerminalProcess(new ProcessStartInfo
+                    {
+                        Arguments = $"aws s3 cp {item.Description.SourceDir} s3://{item.Description.OutputDir} --exclude \"*\" --include \"*{item.Description.FileExt}\" -recursive"
+                    });
+                    terminalProcess.Start();
+                    await terminalProcess.WaitForExitAsync(ct);
+                    if (ct.IsCancellationRequested)
+                    {
+                        await Dispatcher.UIThread.InvokeAsync(async () =>
+                        {
+                            var msgBoxResult = await ShowMessageBox.Handle(new MessageBoxParams
+                            {
+                                Title = "",
+                                Message = "Would you like to kill the terminal process?",
+                                Buttons = MessageBoxButtons.YesNo,
+                                StartupLocation = WindowStartupLocation.CenterOwner
+                            });
+                            if (msgBoxResult == MessageBoxResult.Yes)
+                            {
+                                terminalProcess.Kill();
+                            }
+                        });
+                        response = "";
+                    }
+                    else response = "0";
+                }
                 else
                 {
                     throw new Exception("Internal Item error: ItemTask enum not properly assigned to Type property of Item Description property");
@@ -317,6 +353,7 @@ namespace FFmpegAvalonia.ViewModels
                     await Dispatcher.UIThread.InvokeAsync(() =>
                     {
                         item.Check = true;
+                        item.Progress = 1;
                         item.Description.State = ItemState.Complete;
                     });
                 }

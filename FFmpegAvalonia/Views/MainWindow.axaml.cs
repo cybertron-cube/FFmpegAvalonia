@@ -164,7 +164,7 @@ namespace FFmpegAvalonia
                     ProfileBox.IsEnabled = false;
                 }
             }
-            /*if (itemTask == ItemTask.CopyAWS)
+            if (itemTask == ItemTask.UploadAWS)
             {
                 if (OutputLabel.Text == "Output Directory")
                 {
@@ -179,7 +179,7 @@ namespace FFmpegAvalonia
                     OutputLabel.Text = "Output Directory";
                 }
                 else return;
-            }*/
+            }
         }
         private async void MainWindow_Opened(object? sender, EventArgs e)
         {

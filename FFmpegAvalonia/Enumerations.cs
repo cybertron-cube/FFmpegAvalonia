@@ -11,7 +11,7 @@ public enum ItemTask
     Transcode = 0,
     Copy = 1,
     Trim = 2,
-    //CopyAWS = 3,
+    UploadAWS = 3,
 }
 public enum ItemLabelProgressType
 {
