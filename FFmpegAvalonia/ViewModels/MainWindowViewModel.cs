@@ -310,6 +310,18 @@ namespace FFmpegAvalonia.ViewModels
                     StartupLocation = WindowStartupLocation.CenterOwner
                 });
             }
+            else if (response == "1")
+            {
+                Trace.TraceError("No files were detected within the source directory containing that extension");
+                await ShowMessageBox.Handle(new MessageBoxParams
+                {
+                    Title = "Queue Canceled",
+                    Header = "An error occured",
+                    Message = "No files were detected within the source directory containing that extension",
+                    Buttons = MessageBoxButtons.Ok,
+                    StartupLocation = WindowStartupLocation.CenterOwner
+                });
+            }
             else
             {
                 Trace.TraceError($"response = \"{response}\" token = \"{ct.IsCancellationRequested}\"");
@@ -333,6 +345,10 @@ namespace FFmpegAvalonia.ViewModels
                     CurrentItemInProgress = item;
                     item.Description.State = ItemState.Progressing;
                 });
+                if (item.Description.FileCount == 0)
+                {
+                    return "1";
+                }
                 if (item.Description.Task == ItemTask.Transcode)
                 {
                     FFmp = new FFmpeg(AppSettings.Settings.FFmpegPath);
