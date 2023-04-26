@@ -46,21 +46,23 @@ namespace FFmpegAvalonia.ViewModels
                 this.WhenAnyValue(
                     x => x.SelectedTaskType,
                     x => x.OutputDirText,
-                    (trimCheck, outputDirText) => trimCheck == ItemTask.Trim
-                                                  || trimCheck == ItemTask.Checksum
-                                                  || Directory.Exists(outputDirText));
+                    (itemTask, outputDirText) => itemTask == ItemTask.Trim
+                                                 || itemTask == ItemTask.Checksum
+                                                 || itemTask == ItemTask.UploadAWS
+                                                 || Directory.Exists(outputDirText));
             IObservable<bool> extBoxObserv =
                 this.WhenAnyValue(
                     x => x.ExtText,
                     x => x.SelectedTaskType,
                     (extText, itemTask) => itemTask == ItemTask.Checksum
+                                           || itemTask == ItemTask.Copy
                                            || !String.IsNullOrWhiteSpace(extText));
             IObservable<bool> extValidObservNoFiles =
                 this.WhenAnyValue(
                     x => x.SourceDirText,
                     x => x.ExtText,
                     x => x.SelectedTaskType,
-                    (sourceDirText, extText, itemTask) => itemTask == ItemTask.Checksum 
+                    (sourceDirText, extText, itemTask) => itemTask != ItemTask.Trim
                                                           || (!String.IsNullOrWhiteSpace(extText)
                                                               && Directory.Exists(sourceDirText)
                                                               && Directory.EnumerateFiles(sourceDirText, $"*{extText}").Any())
@@ -161,6 +163,7 @@ namespace FFmpegAvalonia.ViewModels
         private readonly AppSettings AppSettings;
         private void AddTranscode()
         {
+            string fileExt = ExtText.StartsWith('.') ? ExtText : $".{ExtText}";
             TaskListItems.Add(new ListViewData()
             {
                 Name = Path.GetFileName(SourceDirText),
@@ -169,8 +172,8 @@ namespace FFmpegAvalonia.ViewModels
                 {
                     SourceDir = SourceDirText,
                     OutputDir = OutputDirText,
-                    FileExt = ExtText.StartsWith('.') ? ExtText : $".{ExtText}",
-                    FileCount = Directory.EnumerateFiles(SourceDirText, $"*{ExtText}").Count(),//
+                    FileExt = fileExt,
+                    FileCount = Directory.EnumerateFiles(SourceDirText, $"*{fileExt}").Count(),
                     Profile = SelectedProfile!,
                     Task = ItemTask.Transcode,
                     LabelProgressType = ItemLabelProgressType.None,
@@ -181,6 +184,7 @@ namespace FFmpegAvalonia.ViewModels
         }
         private void AddCopy()
         {
+            string fileExt = ExtText == String.Empty ? "*" : ExtText.StartsWith(".") ? ExtText : $".{ExtText}";
             TaskListItems.Add(new ListViewData()
             {
                 Name = Path.GetFileName(SourceDirText),
@@ -189,8 +193,8 @@ namespace FFmpegAvalonia.ViewModels
                 {
                     SourceDir = SourceDirText,
                     OutputDir = OutputDirText,
-                    FileExt = ExtText.StartsWith(".") ? ExtText : $".{ExtText}",
-                    FileCount = Directory.EnumerateFiles(SourceDirText, $"*{ExtText}").Count(),
+                    FileExt = fileExt,
+                    FileCount = Directory.EnumerateFiles(SourceDirText, $"*{fileExt}").Count(),
                     State = ItemState.Awaiting,
                     Task = ItemTask.Copy,
                     LabelProgressType = ItemLabelProgressType.TotalFileCount,
@@ -203,7 +207,8 @@ namespace FFmpegAvalonia.ViewModels
         {
             ObservableCollection<TrimData> trimData = new();
             DirectoryInfo dirInfo = new(SourceDirText);
-            var files = dirInfo.EnumerateFiles("*" + ExtText).OrderBy(x => x.Name);
+            string fileExt = ExtText.StartsWith('.') ? ExtText : $".{ExtText}";
+            var files = dirInfo.EnumerateFiles("*" + fileExt).OrderBy(x => x.Name);
             foreach (var file in files)
             {
                 trimData.Add(new TrimData(file));
@@ -227,7 +232,7 @@ namespace FFmpegAvalonia.ViewModels
                     {
                         SourceDir = SourceDirText,
                         OutputDir = OutputDirText,
-                        FileExt = ExtText.StartsWith('.') ? ExtText : $".{ExtText}",
+                        FileExt = fileExt,
                         TrimData = trimData,
                         FileCount = files.Count(),
                         Task = ItemTask.Trim,
@@ -240,6 +245,7 @@ namespace FFmpegAvalonia.ViewModels
         }
         private void AddUploadAWS()
         {
+            string fileExt = ExtText.StartsWith('.') ? ExtText : $".{ExtText}";
             TaskListItems.Add(new ListViewData()
             {
                 Name = Path.GetFileName(SourceDirText),
@@ -248,8 +254,8 @@ namespace FFmpegAvalonia.ViewModels
                 {
                     SourceDir = SourceDirText,
                     OutputDir = OutputDirText,
-                    FileExt = ExtText.StartsWith(".") ? ExtText : $".{ExtText}",
-                    FileCount = Directory.EnumerateFiles(SourceDirText, $"*{ExtText}").Count(),
+                    FileExt = fileExt,
+                    FileCount = Directory.EnumerateFiles(SourceDirText, $"*{fileExt}").Count(),
                     State = ItemState.Awaiting,
                     Task = ItemTask.UploadAWS,
                     LabelProgressType = ItemLabelProgressType.None,
@@ -260,6 +266,7 @@ namespace FFmpegAvalonia.ViewModels
         }
         private void AddChecksum()
         {
+            string fileExt = ExtText == String.Empty ? "*" : ExtText.StartsWith(".") ? ExtText : $".{ExtText}";
             TaskListItems.Add(new ListViewData()
             {
                 Name = Path.GetFileName(SourceDirText),
@@ -268,9 +275,8 @@ namespace FFmpegAvalonia.ViewModels
                 {
                     SourceDir = SourceDirText,
                     OutputDir = OutputDirText == String.Empty ? SourceDirText : OutputDirText,
-                    //FileExt = ExtText.StartsWith(".") ? ExtText : $".{ExtText}",
-                    FileExt = ExtText == String.Empty ? "*" : ExtText.StartsWith(".") ? ExtText : $".{ExtText}",
-                    FileCount = Directory.EnumerateFiles(SourceDirText, $"*{ExtText}").Count(),
+                    FileExt = fileExt,
+                    FileCount = Directory.EnumerateFiles(SourceDirText, $"*{fileExt}").Count(),
                     State = ItemState.Awaiting,
                     Task = ItemTask.Checksum,
                     LabelProgressType = ItemLabelProgressType.TotalFileCount,
@@ -323,6 +329,7 @@ namespace FFmpegAvalonia.ViewModels
             {
                 await Dispatcher.UIThread.InvokeAsync(() =>
                 {
+                    item.Description.FileCount = Directory.EnumerateFiles(item.Description.SourceDir, $"*{item.Description.FileExt}").Count();
                     CurrentItemInProgress = item;
                     item.Description.State = ItemState.Progressing;
                 });

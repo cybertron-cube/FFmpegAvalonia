@@ -172,9 +172,17 @@ namespace FFmpegAvalonia
                 if (OutputLabel.Text != "s3://")
                 {
                     OutputLabel.Text = "s3://";
+                    OutputDirBrowseBtn.IsEnabled = false;
                     return;
                 }
                 else return;
+            }
+            else
+            {
+                if (!OutputDirBrowseBtn.IsEnabled)
+                {
+                    OutputDirBrowseBtn.IsEnabled = true;
+                }
             }
 
             if (OutputLabel.Text != "Output Directory")
@@ -275,13 +283,12 @@ namespace FFmpegAvalonia
             Debug.WriteLine("TEST");
 
             /*
-             * aws s3 cp /video/ s3://ss-texas/video/ --exclude “*” –include “*.mp4” –recursive
-             * progress?
+             * aws progress?
              * 
-             * release?
+             * extra messagebox window if stop queue during aws
              * 
              * details panel
-             * hash
+             * 
              * 3 log files
              * 
              * use command for listviewitem_remove
