@@ -403,6 +403,7 @@ namespace FFmpegAvalonia.ViewModels
                     }
                     var terminalProcess = Cybertron.GenStatic.GetOSRespectiveTerminalProcess(new ProcessStartInfo
                     {
+                        UseShellExecute = true,
                         Arguments = $"aws s3 cp {item.Description.SourceDir} s3://{item.Description.OutputDir} --exclude \"*\" --include \"*{item.Description.FileExt}\" -recursive"
                     });
                     terminalProcess.Start();
