@@ -77,16 +77,19 @@ namespace FFmpegAvalonia.AppSettingsX
             foreach (PropertyInfo property in properties)
             {
                 object value;
-                bool? boolean = doc.Root.Element(property.Name).Value.TryParseToBool(out string str);
-                if (boolean is null)
+                if (doc.Root.Element(property.Name) != null)
                 {
-                    value = str;
+                    bool? boolean = doc.Root.Element(property.Name).Value.TryParseToBool(out string str);
+                    if (boolean is null)
+                    {
+                        value = str;
+                    }
+                    else
+                    {
+                        value = boolean;
+                    }
+                    property.SetValue(Settings, value);
                 }
-                else
-                {
-                    value = boolean;
-                }
-                property.SetValue(Settings, value);
             }
         }
         public void ImportSettingsXML()
