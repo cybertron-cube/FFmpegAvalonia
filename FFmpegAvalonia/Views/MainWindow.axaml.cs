@@ -54,10 +54,18 @@ namespace FFmpegAvalonia
             AddHandler(DragDrop.DropEvent, Drop!);
             AddHandler(DragDrop.DragOverEvent, DragOver!);
             Closing += MainWindow_Closing;
+            var currentVersion = Assembly.GetExecutingAssembly().GetName().Version;
 #if DEBUG
             Title = $"FFmpeg Avalonia Debug {Assembly.GetExecutingAssembly().GetName().Version}";
 #else
-            Title = $"FFmpeg Avalonia {Assembly.GetExecutingAssembly().GetName().Version!.ToString(3)}";
+            if (currentVersion.Revision == 0 || currentVersion.Revision == null)
+            {
+                Title = $"FFmpeg Avalonia {currentVersion.ToString(3)}";
+            }
+            else
+            {
+                Title = $"FFmpeg Avalonia Dev Pre-Release {Assembly.GetExecutingAssembly().GetName().Version}";
+            }
 #endif
         }
 
