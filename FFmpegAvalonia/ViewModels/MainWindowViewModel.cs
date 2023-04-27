@@ -574,11 +574,23 @@ namespace FFmpegAvalonia.ViewModels
             else throw new Exception("OS Platform not supported");
 
             //catch exceptions
-            var result = await Updater.CheckForUpdatesGitAsync("FFmpegAvalonia",
+            Updater.CheckUpdateResult result;
+            if (AppSettings.Settings.UpdateTarget == "release")
+            {
+                result = await Updater.CheckForUpdatesGitAsync("FFmpegAvalonia",
                 assetIdentifier,
                 "https://api.github.com/repos/Blitznir/FFmpegAvalonia/releases/latest",
-                Assembly.GetExecutingAssembly().GetName().Version!.ToString(3),
+                    Assembly.GetExecutingAssembly().GetName().Version!.ToString(),
+                    HttpClient!);
+            }
+            else
+            {
+                result = await Updater.CheckForUpdatesPreIncludeGitAsync("FFmpegAvalonia",
+                    assetIdentifier,
+                    "https://api.github.com/repos/Blitznir/FFmpegAvalonia/releases",
+                    Assembly.GetExecutingAssembly().GetName().Version!.ToString(),
                 HttpClient!);
+            }
 
             if (result.UpdateAvailable)
             {
