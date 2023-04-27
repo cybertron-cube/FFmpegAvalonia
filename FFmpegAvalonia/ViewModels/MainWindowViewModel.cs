@@ -21,6 +21,7 @@ using Cybertron.CUpdater;
 using System.Runtime.InteropServices;
 using System.Reflection;
 using System.Net.Http;
+using FFmpegAvalonia.TaskTypes;
 
 namespace FFmpegAvalonia.ViewModels
 {
@@ -134,7 +135,7 @@ namespace FFmpegAvalonia.ViewModels
                         await AddTrim();
                         break;
                     case ItemTask.UploadAWS:
-                        AddUploadAWS();
+                        await AddUploadAWS();
                         break;
                     case ItemTask.Checksum:
                         AddChecksum();
@@ -243,8 +244,41 @@ namespace FFmpegAvalonia.ViewModels
                 });
             }
         }
-        private void AddUploadAWS()
+        private async Task AddUploadAWS()
         {
+            var aws = new AWSTask();
+            var result = aws.CheckConfigAndCredentials();
+            if (!result.Item1)
+            {
+                await ShowMessageBox.Handle(new MessageBoxParams
+                {
+                    Title = "Error",
+                    Message = result.Item2,
+                    Buttons = MessageBoxButtons.Ok,
+                    StartupLocation = WindowStartupLocation.CenterOwner
+                });
+                return;
+            }
+            string output = OutputDirText.ToLower();
+            if (!output.StartsWith("s3://"))
+            {
+                output = "s3://" + output;
+            }
+            if (!output.EndsWith("/"))
+            {
+                output += "/";
+            }
+            if (!aws.AssignBucketNameAndKeyPrefix(output))
+            {
+                await ShowMessageBox.Handle(new MessageBoxParams
+                {
+                    Title = "Error",
+                    Message = "The aws link is not valid",
+                    Buttons = MessageBoxButtons.Ok,
+                    StartupLocation = WindowStartupLocation.CenterOwner
+                });
+                return;
+            }
             string fileExt = ExtText.StartsWith('.') ? ExtText : $".{ExtText}";
             TaskListItems.Add(new ListViewData()
             {
@@ -253,9 +287,10 @@ namespace FFmpegAvalonia.ViewModels
                 Description = new DescriptionData()
                 {
                     SourceDir = SourceDirText,
-                    OutputDir = OutputDirText,
+                    OutputDir = output,
                     FileExt = fileExt,
                     FileCount = Directory.EnumerateFiles(SourceDirText, $"*{fileExt}").Count(),
+                    AWS = aws,
                     State = ItemState.Awaiting,
                     Task = ItemTask.UploadAWS,
                     LabelProgressType = ItemLabelProgressType.None,
@@ -393,40 +428,9 @@ namespace FFmpegAvalonia.ViewModels
                 }
                 else if (item.Description.Task == ItemTask.UploadAWS)
                 {
-                    if (item.Description.OutputDir.StartsWith("s3://"))
-                    {
-                        item.Description.OutputDir = item.Description.OutputDir.Replace("s3://", "");
-                    }
-                    if (!item.Description.OutputDir.EndsWith("/"))
-                    {
-                        item.Description.OutputDir += "/";
-                    }
-                    var terminalProcess = Cybertron.GenStatic.GetOSRespectiveTerminalProcess(new ProcessStartInfo
-                    {
-                        UseShellExecute = true,
-                        Arguments = $"aws s3 cp {item.Description.SourceDir} s3://{item.Description.OutputDir} --exclude \"*\" --include \"*{item.Description.FileExt}\" -recursive"
-                    });
-                    terminalProcess.Start();
-                    await terminalProcess.WaitForExitAsync(ct);
-                    if (ct.IsCancellationRequested)
-                    {
-                        await Dispatcher.UIThread.InvokeAsync(async () =>
-                        {
-                            var msgBoxResult = await ShowMessageBox.Handle(new MessageBoxParams
-                            {
-                                Title = "",
-                                Message = "Would you like to kill the terminal process?",
-                                Buttons = MessageBoxButtons.YesNo,
-                                StartupLocation = WindowStartupLocation.CenterOwner
-                            });
-                            if (msgBoxResult == MessageBoxResult.Yes)
-                            {
-                                terminalProcess.Kill();
-                            }
-                        });
-                        response = "";
-                    }
-                    else response = "0";
+                    response = await item.Description.AWS!.UploadDirectoryAsync(item,
+                        new Progress<double>(x => item.Progress = x),
+                        ct);
                 }
                 else if (item.Description.Task == ItemTask.Checksum)
                 {
@@ -578,8 +582,8 @@ namespace FFmpegAvalonia.ViewModels
             if (AppSettings.Settings.UpdateTarget == "release")
             {
                 result = await Updater.CheckForUpdatesGitAsync("FFmpegAvalonia",
-                assetIdentifier,
-                "https://api.github.com/repos/Blitznir/FFmpegAvalonia/releases/latest",
+                    assetIdentifier,
+                    "https://api.github.com/repos/Blitznir/FFmpegAvalonia/releases/latest",
                     Assembly.GetExecutingAssembly().GetName().Version!.ToString(),
                     HttpClient!);
             }
@@ -589,7 +593,7 @@ namespace FFmpegAvalonia.ViewModels
                     assetIdentifier,
                     "https://api.github.com/repos/Blitznir/FFmpegAvalonia/releases",
                     Assembly.GetExecutingAssembly().GetName().Version!.ToString(),
-                HttpClient!);
+                    HttpClient!);
             }
 
             if (result.UpdateAvailable)

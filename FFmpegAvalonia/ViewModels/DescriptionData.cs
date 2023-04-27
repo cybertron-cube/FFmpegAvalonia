@@ -2,6 +2,7 @@
 using System.Collections.ObjectModel;
 using System.Threading;
 using FFmpegAvalonia.AppSettingsX;
+using FFmpegAvalonia.TaskTypes;
 using ReactiveUI;
 
 namespace FFmpegAvalonia.ViewModels
@@ -27,6 +28,7 @@ namespace FFmpegAvalonia.ViewModels
             set => this.RaiseAndSetIfChanged(ref _fileExt, value);
         }
         public ObservableCollection<TrimData>? TrimData;
+        public AWSTask? AWS;
         private readonly object fieldLock = new();
         private string _currentFileName = String.Empty;
         public string CurrentFileName
