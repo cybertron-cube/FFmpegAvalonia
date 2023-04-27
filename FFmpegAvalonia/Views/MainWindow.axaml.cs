@@ -162,13 +162,11 @@ namespace FFmpegAvalonia
                 {
                     MainGrid.RowDefinitions[5].Height = new GridLength(67);
                     ProfileBox.IsEnabled = true;
-                    return;
                 }
             }
             else
             {
-                if (MainGrid.RowDefinitions[5].Height.Value == 0) { }
-                else
+                if (MainGrid.RowDefinitions[5].Height.Value != 0)
                 {
                     MainGrid.RowDefinitions[5].Height = new GridLength(0);
                     ProfileBox.IsEnabled = false;
@@ -177,13 +175,12 @@ namespace FFmpegAvalonia
 
             if (itemTask == ItemTask.UploadAWS)
             {
-                if (OutputLabel.Text != "s3://")
+                if (OutputLabel.Text == "s3://") return;
+                else
                 {
                     OutputLabel.Text = "s3://";
                     OutputDirBrowseBtn.IsEnabled = false;
-                    return;
                 }
-                else return;
             }
             else
             {
@@ -191,11 +188,10 @@ namespace FFmpegAvalonia
                 {
                     OutputDirBrowseBtn.IsEnabled = true;
                 }
-            }
-
-            if (OutputLabel.Text != "Output Directory")
-            {
-                OutputLabel.Text = "Output Directory";
+                if (OutputLabel.Text != "Output Directory")
+                {
+                    OutputLabel.Text = "Output Directory";
+                }
             }
         }
         private async void MainWindow_Opened(object? sender, EventArgs e)
