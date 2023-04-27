@@ -56,7 +56,7 @@ namespace FFmpegAvalonia
             Closing += MainWindow_Closing;
             var currentVersion = Assembly.GetExecutingAssembly().GetName().Version;
 #if DEBUG
-            Title = $"FFmpeg Avalonia Debug {Assembly.GetExecutingAssembly().GetName().Version}";
+            Title = $"FFmpeg Avalonia Debug {currentVersion}";
 #else
             if (currentVersion.Revision == 0 || currentVersion.Revision == null)
             {
@@ -64,7 +64,7 @@ namespace FFmpegAvalonia
             }
             else
             {
-                Title = $"FFmpeg Avalonia Dev Pre-Release {Assembly.GetExecutingAssembly().GetName().Version}";
+                Title = $"FFmpeg Avalonia Dev Pre-Release {currentVersion}";
             }
 #endif
         }
