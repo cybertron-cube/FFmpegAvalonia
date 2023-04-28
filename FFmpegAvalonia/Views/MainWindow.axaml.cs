@@ -204,7 +204,8 @@ namespace FFmpegAvalonia
                 {
                     Title = "Help!",
                     Message = "We could not find your ffmpeg path please select it",
-                    Buttons = MessageBoxButtons.Ok
+                    Buttons = MessageBoxButtons.Ok,
+                    StartupLocation = WindowStartupLocation.CenterOwner
                 });
                 var result = await msgBoxError.ShowDialog(this);
                 if (result == MessageBoxResult.Ok)
@@ -214,6 +215,10 @@ namespace FFmpegAvalonia
                     if (path is not null)
                     {
                         AppSettings.Settings.FFmpegPath = path;
+                    }
+                    else
+                    {
+                        this.Close();
                     }
                 }
                 else
