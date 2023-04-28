@@ -28,7 +28,7 @@ namespace FFmpegAvalonia.AppSettingsX
             {
                 Settings = new Settings();
                 ImportSettingsXML();
-                if (Settings.FFmpegPath is null)
+                if (Settings.FFmpegPath == null || Settings.FFmpegPath == String.Empty)
                 {
                     FindFFPath();
                 }
