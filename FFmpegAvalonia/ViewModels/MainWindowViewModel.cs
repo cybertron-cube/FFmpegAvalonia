@@ -587,11 +587,19 @@ namespace FFmpegAvalonia.ViewModels
                     Assembly.GetExecutingAssembly().GetName().Version!.ToString(),
                     HttpClient!);
             }
-            else
+            else if (AppSettings.Settings.UpdateTarget == "latest")
             {
                 result = await Updater.CheckForUpdatesPreIncludeGitAsync("FFmpegAvalonia",
                     assetIdentifier,
-                    "https://api.github.com/repos/Blitznir/FFmpegAvalonia/releases",
+                    "https://api.github.com/repos/Blitznir/FFmpegAvalonia/releases?per_page=1",
+                    Assembly.GetExecutingAssembly().GetName().Version!.ToString(),
+                    HttpClient!);
+            }
+            else
+            {
+                result = await Updater.CheckForUpdatesGitAsync("FFmpegAvalonia",
+                    assetIdentifier,
+                    "https://api.github.com/repos/Blitznir/FFmpegAvalonia/releases/latest",
                     Assembly.GetExecutingAssembly().GetName().Version!.ToString(),
                     HttpClient!);
             }
