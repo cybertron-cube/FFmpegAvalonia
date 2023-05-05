@@ -144,7 +144,7 @@ namespace FFmpegAvalonia.ViewModels
             }, this.IsValid());
             StopQueueCommand = ReactiveCommand.Create(StopQueue, StartQueueCommand.IsExecuting);
             EditorCommand = ReactiveCommand.CreateFromTask<string>(Editor);
-            CheckForUpdatesCommand = ReactiveCommand.CreateFromTask(CheckForUpdates);
+            CheckForUpdatesCommand = ReactiveCommand.CreateFromTask<bool>(CheckForUpdates);
             OpenURLCommand = ReactiveCommand.Create<string>(OpenURL);
             #endregion
             #region Subscriptions
@@ -155,7 +155,7 @@ namespace FFmpegAvalonia.ViewModels
         public ReactiveCommand<Unit, Unit> StartQueueCommand { get; }
         public ReactiveCommand<Unit, Unit> StopQueueCommand { get; }
         public ReactiveCommand<string, Unit> EditorCommand { get; }
-        public ReactiveCommand<Unit, Unit> CheckForUpdatesCommand { get; }
+        public ReactiveCommand<bool, Unit> CheckForUpdatesCommand { get; }
         public ReactiveCommand<string, Unit> OpenURLCommand { get; }
         public Interaction<string, string?> ShowTextEditorDialog;
         public Interaction<TrimWindowViewModel, bool> ShowTrimDialog;
@@ -564,7 +564,7 @@ namespace FFmpegAvalonia.ViewModels
                 }
             }
         }
-        private async Task CheckForUpdates()
+        private async Task CheckForUpdates(bool silent)
         {
             string assetIdentifier;
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
@@ -640,7 +640,7 @@ namespace FFmpegAvalonia.ViewModels
                     Environment.Exit(1);
                 }
             }
-            else
+            else if (!silent)
             {
                 await ShowMessageBox.Handle(new MessageBoxParams
                 {

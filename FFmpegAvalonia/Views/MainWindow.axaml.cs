@@ -198,6 +198,7 @@ namespace FFmpegAvalonia
         {
             Trace.TraceInformation("Main Window Opened");
             ViewModel.SelectedTaskType = ItemTask.Copy; //fixes error popup not showing when switching to transcode
+            ViewModel.AutoOverwriteCheck = AppSettings.Settings.AutoOverwriteCheck;
             if (AppSettings.Settings.FFmpegPath == String.Empty)
             {
                 var msgBoxError = MessageBox.GetMessageBox(new MessageBoxParams
@@ -226,7 +227,10 @@ namespace FFmpegAvalonia
                     this.Close();
                 }
             }
-            ViewModel.AutoOverwriteCheck = AppSettings.Settings.AutoOverwriteCheck;
+            if (AppSettings.Settings.CheckUpdateOnStart)
+            {
+                await ViewModel.CheckForUpdatesCommand.Execute(true);
+            }
 #if DEBUG
             var buttonGrid = this.FindControl<Grid>("ButtonSec");
             var testButton = new Button();
