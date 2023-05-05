@@ -47,10 +47,12 @@ namespace FFmpegAvalonia
             InitializeComponent();
             ViewModel = new(AppSettings);
             DataContext = ViewModel;
-            this.WhenActivated(d => d(ViewModel!.ShowTextEditorDialog.RegisterHandler(DoShowTextEditorDialogAsync))); //COMBINE these into one line????
-            this.WhenActivated(d => d(ViewModel!.ShowTrimDialog.RegisterHandler(DoShowTrimDialogAsync)));//
-            //this.WhenActivated(d => d(ViewModel!.ShowDownloadUpdatesDialog.RegisterHandler(DoShowDownloadUpdatesDialogAsync)));
-            this.WhenActivated(d => d(ViewModel!.ShowMessageBox.RegisterHandler(DoShowMessageBoxAsync)));//
+            this.WhenActivated(d =>
+            {
+                d(ViewModel!.ShowTextEditorDialog.RegisterHandler(DoShowTextEditorDialogAsync));
+                d(ViewModel!.ShowTrimDialog.RegisterHandler(DoShowTrimDialogAsync));
+                d(ViewModel!.ShowMessageBox.RegisterHandler(DoShowMessageBoxAsync));
+            });
             AddHandler(DragDrop.DropEvent, Drop!);
             AddHandler(DragDrop.DragOverEvent, DragOver!);
             Closing += MainWindow_Closing;
@@ -97,14 +99,6 @@ namespace FFmpegAvalonia
             var result = await dialog.ShowDialog<string?>(this);
             interaction.SetOutput(result);
         }
-        /*private async Task DoShowDownloadUpdatesDialogAsync(InteractionContext<Updater.CheckUpdateResult, Unit> interaction)
-        {
-            var dialog = new DownloadUpdateWindow();
-            dialog.CheckUpdateResult = interaction.Input;
-            dialog.HttpClient = ViewModel.HttpClient;
-            await dialog.ShowDialog(this);
-            interaction.SetOutput(new Unit());
-        }*/
         private async Task DoShowTrimDialogAsync(InteractionContext<TrimWindowViewModel, bool> interaction)
         {
             TrimWindow dialog = new()
@@ -138,7 +132,6 @@ namespace FFmpegAvalonia
             try
             {
                 TextBlock textBlock = (TextBlock)inputElement.GetVisualDescendants().Where(x => x is TextBlock).Single();
-                //TextBlock textBlock = (TextBlock)inputElement.GetVisualChildren().ToList()[0].GetVisualChildren().ToList()[0];
                 textBox = (TextBox)textBlock.TemplatedParent!;
             }
             catch (Exception ex)
@@ -294,21 +287,6 @@ namespace FFmpegAvalonia
             ViewModel.ExtText = "mkv";
             ViewModel.SelectedTaskType = ItemTask.Trim;
             Debug.WriteLine("TEST");
-
-            /*
-             * aws progress?
-             * 
-             * extra messagebox window if stop queue during aws
-             * 
-             * details panel
-             * 
-             * 3 log files
-             * 
-             * use command for listviewitem_remove
-             * task_listselectionchanged improvement
-             * stopqueue only 2 lines ffmp?.stop and copier?.stop
-             * fully implement cancellation token
-             */
         }
 #endif
         private async void ListViewItem_Edit(object sender, RoutedEventArgs e) //BIND ENABLED INSTEAD
