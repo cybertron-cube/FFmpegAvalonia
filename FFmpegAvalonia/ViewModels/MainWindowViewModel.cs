@@ -159,7 +159,6 @@ namespace FFmpegAvalonia.ViewModels
         public ReactiveCommand<string, Unit> OpenURLCommand { get; }
         public Interaction<string, string?> ShowTextEditorDialog;
         public Interaction<TrimWindowViewModel, bool> ShowTrimDialog;
-        //public Interaction<Updater.CheckUpdateResult, Unit> ShowDownloadUpdatesDialog;
         public Interaction<MessageBoxParams, MessageBoxResult> ShowMessageBox;
         private readonly AppSettings AppSettings;
         private void AddTranscode()
@@ -513,54 +512,27 @@ namespace FFmpegAvalonia.ViewModels
             }
             else { }
         }
-        private async Task Editor(string controlName) //very little makes sense about this command (it's atrocious) but I felt like doing it this way just cause :) honestly this whole project is probably atrocious but I'm learning :)
+        private async Task Editor(string controlName)
         {
             string xml;
-            if (controlName == nameof(Settings))
-            {
-                xml = AppSettings.GetXElementString<Settings>();
-            }
-            else if (controlName == nameof(Profile))
-            {
-                xml = AppSettings.GetXElementString<Profile>();
-            }
-            else return;
+            xml = AppSettings.GetXMLText(controlName);
             string? result = await ShowTextEditorDialog.Handle(xml);
             if (result != null)
             {
-                if (controlName == nameof(Settings))
+                try
                 {
-                    try
-                    {
-                        AppSettings.ImportSettingsXML(result);
-                    }
-                    catch
-                    {
-                        await ShowMessageBox.Handle(new MessageBoxParams
-                        {
-                            Title = "Error",
-                            Message = "The xml could not be parsed",
-                            Buttons = MessageBoxButtons.Ok,
-                            StartupLocation = WindowStartupLocation.CenterOwner
-                        });
-                    }
+                    AppSettings.Save(controlName, ref result);
                 }
-                else if (controlName == nameof(Profile))
+                catch (Exception ex)
                 {
-                    try
+                    Trace.TraceError(ex.ToString());
+                    await ShowMessageBox.Handle(new MessageBoxParams
                     {
-                        AppSettings.ImportProfilesXML(result); 
-                    }
-                    catch
-                    {
-                        await ShowMessageBox.Handle(new MessageBoxParams
-                        {
-                            Title = "Error",
-                            Message = "The xml could not be parsed",
-                            Buttons = MessageBoxButtons.Ok,
-                            StartupLocation = WindowStartupLocation.CenterOwner
-                        });
-                    }
+                        Title = "Error",
+                        Message = "The xml could not be parsed, please check the log for more info",
+                        Buttons = MessageBoxButtons.Ok,
+                        StartupLocation = WindowStartupLocation.CenterOwner
+                    });
                 }
             }
         }

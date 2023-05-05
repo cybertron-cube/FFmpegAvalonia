@@ -91,8 +91,8 @@
 				<MenuItem Name="MenuItemClose" Header="_Exit" Click="MenuItemClose_Click"/>
 			</MenuItem>
 			<MenuItem Header="_Edit">
-				<MenuItem Header="_Profiles" Command="{Binding EditorCommand}" CommandParameter="Profile"/>
-				<MenuItem Header="_Settings" Command="{Binding EditorCommand}" CommandParameter="Settings"/>
+				<MenuItem Header="_Profiles" Command="{Binding EditorCommand}" CommandParameter="FFmpegAvalonia.AppSettingsX.Profile"/>
+				<MenuItem Header="_Settings" Command="{Binding EditorCommand}" CommandParameter="FFmpegAvalonia.AppSettingsX.Settings"/>
 			</MenuItem>
 			<MenuItem Header="_Help">
 				<MenuItem Header="_Check for updates" Command="{Binding	CheckForUpdatesCommand}"/>

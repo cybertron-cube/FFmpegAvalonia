@@ -51,7 +51,43 @@ namespace FFmpegAvalonia.AppSettingsX
                 };
             }
         }
-        public void ImportProfilesXML(string text)
+        public void ImportProfilesXML()
+        {
+            var text = File.ReadAllText(ProfilesXMLPath);
+            ImportProfilesXML(ref text);
+        }
+        public void ImportSettingsXML()
+        {
+            var text = File.ReadAllText(SettingsXMLPath);
+            ImportSettingsXML(ref text);
+        }
+        public string GetXMLText(string name)
+        {
+            Type type = Type.GetType(name, true);
+            if (type == typeof(Profile))
+            {
+                return GetProfilesXElement().ToString();
+            }
+            else if (type == typeof(Settings))
+            {
+                return GetSettingsXElement().ToString();
+            }
+            else throw new ArgumentException(name);
+        }
+        public void Save(string name, ref string text)
+        {
+            Type type = Type.GetType(name, true);
+            if (type == typeof(Profile))
+            {
+                ImportProfilesXML(ref text);
+            }
+            else if (type == typeof(Settings))
+            {
+                ImportSettingsXML(ref text);
+            }
+            else throw new ArgumentException(name);
+        }
+        private void ImportProfilesXML(ref string text)
         {
             XDocument doc = XDocument.Parse(text);
             PropertyInfo[] properties = typeof(Profile).GetProperties();
@@ -65,12 +101,7 @@ namespace FFmpegAvalonia.AppSettingsX
                 Profiles.Add(profile.Name, profile);
             }
         }
-        public void ImportProfilesXML()
-        {
-            var text = File.ReadAllText(ProfilesXMLPath);
-            ImportProfilesXML(text);
-        }
-        public void ImportSettingsXML(string text)
+        private void ImportSettingsXML(ref string text)
         {
             XDocument doc = XDocument.Parse(text);
             PropertyInfo[] properties = typeof(Settings).GetProperties();
@@ -91,23 +122,6 @@ namespace FFmpegAvalonia.AppSettingsX
                     property.SetValue(Settings, value);
                 }
             }
-        }
-        public void ImportSettingsXML()
-        {
-            var text = File.ReadAllText(SettingsXMLPath);
-            ImportSettingsXML(text);
-        }
-        public string GetXElementString<T>()
-        {
-            if (typeof(T) == typeof(Profile))
-            {
-                return GetProfilesXElement().ToString();
-            }
-            else if (typeof(T) == typeof(Settings))
-            {
-                return GetSettingsXElement().ToString();
-            }
-            else throw new ArgumentException();
         }
         private XElement GetProfilesXElement()
         {
