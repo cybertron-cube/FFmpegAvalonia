@@ -91,7 +91,6 @@ namespace FFmpegAvalonia
                 this.Close();
             }
         }
-
         private async Task DoShowTextEditorDialogAsync(InteractionContext<string, string?> interaction)
         {
             var dialog = new TextEditorWindow();
@@ -222,6 +221,7 @@ namespace FFmpegAvalonia
             }
             if (AppSettings.Settings.CheckUpdateOnStart)
             {
+                Trace.TraceInformation("CheckUpdateOnStart enabled");
                 await ViewModel.CheckForUpdatesCommand.Execute(true);
             }
 #if DEBUG

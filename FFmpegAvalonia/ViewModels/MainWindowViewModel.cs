@@ -540,6 +540,7 @@ namespace FFmpegAvalonia.ViewModels
         }
         private async Task CheckForUpdates(bool silent)
         {
+            Trace.TraceInformation("Checking for updates...");
             string assetIdentifier;
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
@@ -550,9 +551,12 @@ namespace FFmpegAvalonia.ViewModels
                 assetIdentifier = "linux";
             }
             else throw new Exception("OS Platform not supported");
+            Trace.TraceInformation($"Asset Identifier: {assetIdentifier}");
 
             //catch exceptions
             Updater.CheckUpdateResult result;
+            Trace.TraceInformation($"Update Target: {AppSettings.Settings.UpdateTarget}");
+            Trace.TraceInformation($"Current Version: {Assembly.GetExecutingAssembly().GetName().Version}");
             if (AppSettings.Settings.UpdateTarget == "release")
             {
                 result = await Updater.CheckForUpdatesGitAsync("FFmpegAvalonia",
@@ -577,6 +581,8 @@ namespace FFmpegAvalonia.ViewModels
                     Assembly.GetExecutingAssembly().GetName().Version!.ToString(),
                     HttpClient!);
             }
+            Trace.TraceInformation($"Result: {result.UpdateAvailable}");
+            Trace.TraceInformation($"Result Version: {result.Version}");
 
             if (result.UpdateAvailable)
             {
@@ -602,6 +608,8 @@ namespace FFmpegAvalonia.ViewModels
                     {
                         FileName = updaterProcessPath,
                     };
+                    Trace.TraceInformation($"Updater Path: {updaterProcessPath}");
+                    Trace.TraceInformation($"This Process Path: {thisProcessPath}");
                     processStartInfo.ArgumentList.Add(result.DownloadLink);
                     Trace.TraceInformation(result.DownloadLink);
                     processStartInfo.ArgumentList.Add(AppContext.BaseDirectory);
@@ -610,8 +618,13 @@ namespace FFmpegAvalonia.ViewModels
                     Trace.TraceInformation(thisProcessPath);
                     processStartInfo.ArgumentList.Add("profiles.xml");
                     processStartInfo.ArgumentList.Add("settings.xml");
+                    Trace.TraceInformation("Starting updater");
                     Process.Start(processStartInfo);
-                    Environment.Exit(1);
+                    ExitApp();
+                }
+                else
+                {
+                    Trace.TraceInformation("Update canceled");
                 }
             }
             else if (!silent)
