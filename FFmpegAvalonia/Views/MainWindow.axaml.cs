@@ -53,6 +53,7 @@ namespace FFmpegAvalonia
                 d(ViewModel!.ShowTrimDialog.RegisterHandler(DoShowTrimDialogAsync));
                 d(ViewModel!.ShowMessageBox.RegisterHandler(DoShowMessageBoxAsync));
             });
+            this.Events().Closed.InvokeCommand(ViewModel.ExitAppCommand);
             AddHandler(DragDrop.DropEvent, Drop!);
             AddHandler(DragDrop.DragOverEvent, DragOver!);
             Closing += MainWindow_Closing;
@@ -70,7 +71,6 @@ namespace FFmpegAvalonia
             }
 #endif
         }
-
         private async void MainWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
         {
             if (_confirmShutdown) return;
@@ -236,17 +236,6 @@ namespace FFmpegAvalonia
         private void MenuItemClose_Click(object? sender, RoutedEventArgs e)
         {
             this.Close();
-        }
-        private void MainWindow_Closed(object? sender, EventArgs e)
-        {
-            Trace.TraceInformation("Stopping FFmpeg process if running...");
-            ViewModel.FFmp?.Stop();
-            Trace.TraceInformation("Stopping copier instance if running...");
-            ViewModel.Copier?.Stop();
-            Trace.TraceInformation("Saving settings...");
-            AppSettings.Settings.AutoOverwriteCheck = ViewModel.AutoOverwriteCheck;
-            AppSettings.Save();
-            Trace.TraceInformation("Exiting...");
         }
         private async void Browse_Click(object sender, RoutedEventArgs e)
         {

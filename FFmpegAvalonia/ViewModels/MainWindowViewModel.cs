@@ -146,6 +146,7 @@ namespace FFmpegAvalonia.ViewModels
             EditorCommand = ReactiveCommand.CreateFromTask<string>(Editor);
             CheckForUpdatesCommand = ReactiveCommand.CreateFromTask<bool>(CheckForUpdates);
             OpenURLCommand = ReactiveCommand.Create<string>(OpenURL);
+            ExitAppCommand = ReactiveCommand.Create<EventArgs>(ExitApp);
             #endregion
             #region Subscriptions
             StartQueueCommand.IsExecuting.Subscribe(x => IsQueueRunning = x);
@@ -157,6 +158,7 @@ namespace FFmpegAvalonia.ViewModels
         public ReactiveCommand<string, Unit> EditorCommand { get; }
         public ReactiveCommand<bool, Unit> CheckForUpdatesCommand { get; }
         public ReactiveCommand<string, Unit> OpenURLCommand { get; }
+        public ReactiveCommand<EventArgs, Unit> ExitAppCommand { get; }
         public Interaction<string, string?> ShowTextEditorDialog;
         public Interaction<TrimWindowViewModel, bool> ShowTrimDialog;
         public Interaction<MessageBoxParams, MessageBoxResult> ShowMessageBox;
@@ -646,6 +648,21 @@ namespace FFmpegAvalonia.ViewModels
                 }
                 else throw;
             }
+        }
+        private void ExitApp(EventArgs e)
+        {
+            ExitApp();
+        }
+        private void ExitApp()
+        {
+            Trace.TraceInformation("Stopping FFmpeg process if running...");
+            FFmp?.Stop();
+            Trace.TraceInformation("Stopping copier instance if running...");
+            Copier?.Stop();
+            Trace.TraceInformation("Saving settings...");
+            AppSettings.Settings.AutoOverwriteCheck = AutoOverwriteCheck;
+            AppSettings.Save();
+            Trace.TraceInformation("Exiting...");
         }
         private readonly HttpClient _httpClient = new();
         public HttpClient HttpClient => _httpClient;

@@ -24,6 +24,7 @@
     <!--Condition below is needed to remove Avalonia.Diagnostics package from build output in Release configuration.-->
     <PackageReference Condition="'$(Configuration)' == 'Debug'" Include="Avalonia.Diagnostics" Version="0.10.18" />
     <PackageReference Include="Avalonia.ReactiveUI" Version="0.10.18" />
+    <PackageReference Include="Avalonia.ReactiveUI.Events" Version="0.10.18" />
     <PackageReference Include="AvaloniaEdit.TextMate" Version="0.10.12.2" />
     <PackageReference Include="AWSSDK.Core" Version="3.7.106.27" />
     <PackageReference Include="AWSSDK.S3" Version="3.7.104.5" />
