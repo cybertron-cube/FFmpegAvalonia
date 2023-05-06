@@ -22,6 +22,8 @@ using System.Runtime.InteropServices;
 using System.Reflection;
 using System.Net.Http;
 using FFmpegAvalonia.TaskTypes;
+using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia;
 
 namespace FFmpegAvalonia.ViewModels
 {
@@ -146,7 +148,7 @@ namespace FFmpegAvalonia.ViewModels
             EditorCommand = ReactiveCommand.CreateFromTask<string>(Editor);
             CheckForUpdatesCommand = ReactiveCommand.CreateFromTask<bool>(CheckForUpdates);
             OpenURLCommand = ReactiveCommand.Create<string>(OpenURL);
-            ExitAppCommand = ReactiveCommand.Create<EventArgs>(ExitApp);
+            ExitAppCommand = ReactiveCommand.Create<EventArgs?>(ExitApp);
             #endregion
             #region Subscriptions
             StartQueueCommand.IsExecuting.Subscribe(x => IsQueueRunning = x);
@@ -158,7 +160,7 @@ namespace FFmpegAvalonia.ViewModels
         public ReactiveCommand<string, Unit> EditorCommand { get; }
         public ReactiveCommand<bool, Unit> CheckForUpdatesCommand { get; }
         public ReactiveCommand<string, Unit> OpenURLCommand { get; }
-        public ReactiveCommand<EventArgs, Unit> ExitAppCommand { get; }
+        public ReactiveCommand<EventArgs?, Unit> ExitAppCommand { get; }
         public Interaction<string, string?> ShowTextEditorDialog;
         public Interaction<TrimWindowViewModel, bool> ShowTrimDialog;
         public Interaction<MessageBoxParams, MessageBoxResult> ShowMessageBox;
@@ -662,12 +664,14 @@ namespace FFmpegAvalonia.ViewModels
                 else throw;
             }
         }
-        private void ExitApp(EventArgs e)
+        public void ExitApp(EventArgs? e = null)
         {
-            ExitApp();
-        }
-        private void ExitApp()
-        {
+            if (e == null)
+            {
+                var app = (IClassicDesktopStyleApplicationLifetime)Application.Current!.ApplicationLifetime!;
+                app.Shutdown();
+                return;
+            }
             Trace.TraceInformation("Stopping FFmpeg process if running...");
             FFmp?.Stop();
             Trace.TraceInformation("Stopping copier instance if running...");
