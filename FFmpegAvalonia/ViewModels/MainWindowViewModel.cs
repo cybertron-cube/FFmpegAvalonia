@@ -13,7 +13,6 @@ using FFmpegAvalonia.AppSettingsX;
 using System.Diagnostics;
 using Avalonia.Media;
 using System.Reactive.Linq;
-using CyberFileUtils;
 using Avalonia.Threading;
 using Avalonia.Controls;
 using AvaloniaMessageBox;

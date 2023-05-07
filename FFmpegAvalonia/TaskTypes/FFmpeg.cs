@@ -16,7 +16,7 @@ using System.Collections.ObjectModel;
 using PCLUntils.IEnumerables;
 using System.Linq;
 
-namespace FFmpegAvalonia
+namespace FFmpegAvalonia.TaskTypes
 {
     public class FFmpeg
     {
@@ -77,8 +77,8 @@ namespace FFmpegAvalonia
                 Trace.TraceInformation("Skipping per file framerate calculation because -r arg exists");
                 string frameRateToParse = match.Groups[1].Value;
                 var split = frameRateToParse.Split("/");
-                decimal numerator = Decimal.Parse(split[0]);
-                decimal denominator = Decimal.Parse(split[1]);
+                decimal numerator = decimal.Parse(split[0]);
+                decimal denominator = decimal.Parse(split[1]);
                 frameRate = numerator / denominator;
                 Trace.TraceInformation("Framerate: " + frameRate);
             }
@@ -94,7 +94,7 @@ namespace FFmpegAvalonia
                 {
                     _FFProcess.StartProbe($"-v 0 -of csv=p=0 -select_streams v:0 -show_entries stream=r_frame_rate \"{file.FullName}\"");
                     string output = _FFProcess.StandardOutput.ReadToEnd().Trim();
-                    frameRate = Decimal.Parse(output.Split(@"/")[0]) / Decimal.Parse(output.Split(@"/")[1]);
+                    frameRate = decimal.Parse(output.Split(@"/")[0]) / decimal.Parse(output.Split(@"/")[1]);
 
                     Trace.TraceInformation("Framerate: " + frameRate);
                     _FFProcess.WaitForExit();
@@ -103,7 +103,7 @@ namespace FFmpegAvalonia
                 }
 
                 _FFProcess.StartProbe($"-v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 \"{file.FullName}\"");
-                decimal totalSeconds = Decimal.Parse(_FFProcess.StandardOutput.ReadToEnd().Trim());
+                decimal totalSeconds = decimal.Parse(_FFProcess.StandardOutput.ReadToEnd().Trim());
 
                 Trace.TraceInformation("Total Seconds: " + totalSeconds);
                 _FFProcess.WaitForExit();
@@ -113,12 +113,12 @@ namespace FFmpegAvalonia
                 decimal totalFrames = frameRate * totalSeconds;
                 _FilesDict.TryAdd(file.FullName, (int)totalFrames); //rounds down
                 _TotalDirFrames += (int)totalFrames;
-                sb.Append(" -- " + (int)totalFrames + " -- " + totalFrames + System.Environment.NewLine);
+                sb.Append(" -- " + (int)totalFrames + " -- " + totalFrames + Environment.NewLine);
             }
             _FFProcess.Dispose();
             return sb.ToString();
         }
-        public string GetFrameCountFromPackets(string dir, string searchPattern) 
+        public string GetFrameCountFromPackets(string dir, string searchPattern)
         {
             NewFFProcess();
             var dirInfo = new DirectoryInfo(dir);
@@ -129,10 +129,10 @@ namespace FFmpegAvalonia
                 sb.Append(file.FullName);
                 _FFProcess.StartInfo.Arguments = $"-v error -select_streams v:0 -count_packets -show_entries stream=nb_read_packets \"{file.FullName}\"";
                 _FFProcess.Start();
-                int totalFrames = Int32.Parse(_FFProcess.StandardOutput.ReadToEnd().Split("=")[1].Split("[")[0].Trim());
+                int totalFrames = int.Parse(_FFProcess.StandardOutput.ReadToEnd().Split("=")[1].Split("[")[0].Trim());
                 _FFProcess.WaitForExit();
                 _FilesDict.TryAdd(file.FullName, totalFrames);
-                sb.Append(" -- " + totalFrames + System.Environment.NewLine);
+                sb.Append(" -- " + totalFrames + Environment.NewLine);
             }
             _FFProcess.Dispose();
             return sb.ToString();
@@ -148,10 +148,10 @@ namespace FFmpegAvalonia
                 sb.Append(file.FullName);
                 _FFProcess.StartInfo.Arguments = $"-v error -select_streams v:0 -count_frames -show_entries stream=nb_read_frames \"{file.FullName}\"";
                 _FFProcess.Start();
-                int totalFrames = Int32.Parse(_FFProcess.StandardOutput.ReadToEnd().Split("=")[1].Split("[")[0].Trim());
+                int totalFrames = int.Parse(_FFProcess.StandardOutput.ReadToEnd().Split("=")[1].Split("[")[0].Trim());
                 _FFProcess.WaitForExit();
                 _FilesDict.TryAdd(file.FullName, totalFrames);
-                sb.Append(" -- " + totalFrames + System.Environment.NewLine);
+                sb.Append(" -- " + totalFrames + Environment.NewLine);
             }
             _FFProcess.Dispose();
             return sb.ToString();
@@ -211,7 +211,7 @@ namespace FFmpegAvalonia
                 item.Description.FileCount = trimDataValidTimeCodes.Count();
                 item.Label = $"{item.Name} ({item.Description.CurrentFileNumber}/{item.Description.FileCount})";
             });
-            if (outputDir == String.Empty || sourceDir == outputDir)
+            if (outputDir == string.Empty || sourceDir == outputDir)
             {
                 foreach (TrimData data in trimDataValidTimeCodes)
                 {
@@ -343,7 +343,7 @@ namespace FFmpegAvalonia
                     proc.Close();
                 }
                 proc.Dispose();
-                if (String.IsNullOrEmpty(stdout) && String.IsNullOrEmpty(stderr))
+                if (string.IsNullOrEmpty(stdout) && string.IsNullOrEmpty(stderr))
                 {
                     return false;
                 }
@@ -417,7 +417,7 @@ namespace FFmpegAvalonia
                 Trace.TraceInformation("STDOUT**--" + e.Data);
                 if (e.Data.Contains("frame="))
                 {
-                    _LastFrame = Int32.Parse(e.Data.Split("=")[1].Trim()); //trim
+                    _LastFrame = int.Parse(e.Data.Split("=")[1].Trim()); //trim
                     Trace.TraceInformation(_LastFrame.ToString());
                     double progress = ((double)_LastFrame + _TotalPrevFrameProgress) / _TotalDirFrames;
                     Trace.TraceInformation($"Progress: {progress} frames finished");
