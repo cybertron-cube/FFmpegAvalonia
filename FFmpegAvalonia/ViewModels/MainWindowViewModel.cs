@@ -325,19 +325,8 @@ namespace FFmpegAvalonia.ViewModels
         }
         private async Task StartQueueAsync(CancellationToken ct)
         {
-            string response = await Task.Run(() => ProcessTaskItems(ct));
-            if (response != "0" && ct.IsCancellationRequested) //Queue stopped
-            {
-                Trace.TraceInformation($"Queue was canceled on file \"{response}\"");
-                await ShowMessageBox.Handle(new MessageBoxParams
-                {
-                    Title = "Queue Canceled",
-                    Message = $"Your queue was canceled on file {response}",
-                    Buttons = MessageBoxButtons.Ok,
-                    StartupLocation = WindowStartupLocation.CenterOwner
-                });
-            }
-            else if (response == "0" && !ct.IsCancellationRequested) //Success
+            (int, string) response = await Task.Run(() => ProcessTaskItems(ct));
+            if (response.Item1 == 0 && !ct.IsCancellationRequested) //Success
             {
                 Trace.TraceInformation("Queue completed");
                 await ShowMessageBox.Handle(new MessageBoxParams
@@ -348,33 +337,38 @@ namespace FFmpegAvalonia.ViewModels
                     StartupLocation = WindowStartupLocation.CenterOwner
                 });
             }
-            else if (response == "1")
+            else if (response.Item1 == -1 && ct.IsCancellationRequested) //Queue stopped
             {
-                Trace.TraceError("No files were detected within the source directory containing that extension");
+                Trace.TraceInformation($"Queue was canceled on file \"{response.Item2}\"");
                 await ShowMessageBox.Handle(new MessageBoxParams
                 {
                     Title = "Queue Canceled",
-                    Header = "An error occured",
-                    Message = "No files were detected within the source directory containing that extension",
+                    Message = $"Your queue was canceled on file {response.Item2}",
                     Buttons = MessageBoxButtons.Ok,
                     StartupLocation = WindowStartupLocation.CenterOwner
                 });
             }
             else
             {
-                Trace.TraceError($"response = \"{response}\" token = \"{ct.IsCancellationRequested}\"");
+                Trace.TraceError($"Error code: {response.Item1}{Environment.NewLine}" +
+                    $"Response = \"{response.Item2}\"{Environment.NewLine}" +
+                    $"Task type = \"{CurrentItemInProgress?.Description.Task.ToString()}\"{Environment.NewLine}" +
+                    $"Cancel requested = \"{ct.IsCancellationRequested}\"");
                 await ShowMessageBox.Handle(new MessageBoxParams
                 {
                     Title = "Error",
-                    Message = $"response = \"{response}\" token = \"{ct.IsCancellationRequested}\"",
+                    Header = $"Error code: {response.Item1}",
+                    Message = $"Response = \"{response.Item2}\"{Environment.NewLine}" +
+                        $"Task type = \"{CurrentItemInProgress?.Description.Task.ToString()}\"{Environment.NewLine}" +
+                        $"Cancel requested = \"{ct.IsCancellationRequested}\"",
                     Buttons = MessageBoxButtons.Ok,
                     StartupLocation = WindowStartupLocation.CenterOwner
                 });
             }
         }
-        private async Task<string> ProcessTaskItems(CancellationToken ct)
+        private async Task<(int, string)> ProcessTaskItems(CancellationToken ct)
         {
-            string response = String.Empty;
+            (int, string) response = (-100, "No response set");
             foreach (ListViewData item in TaskListItems)
             {
                 await Dispatcher.UIThread.InvokeAsync(() =>
@@ -385,7 +379,7 @@ namespace FFmpegAvalonia.ViewModels
                 });
                 if (item.Description.FileCount == 0)
                 {
-                    return "1";
+                    return (-2, $"No files were detected within the source directory \"{item.Description.SourceDir}\" containing the extension \"{item.Description.FileExt}\"");
                 }
                 if (item.Description.Task == ItemTask.Transcode)
                 {
@@ -443,17 +437,25 @@ namespace FFmpegAvalonia.ViewModels
                         item.Progress = item.Description.CurrentFileNumber++ / (double)item.Description.FileCount;
                         item.Label = $"{fileName} ({item.Description.CurrentFileNumber}/{item.Description.FileCount})";
                     };
-                    response = await hash.DirectoryHashAsync(item.Description.SourceDir,
+                    var hashResponse = await hash.DirectoryHashAsync(item.Description.SourceDir,
                         Path.Combine(item.Description.OutputDir, "hash_list.txt"),
                         $"*{item.Description.FileExt}",
                         Cybertron.Hashing.HashingAlgorithmTypes.MD5,
                         ct);
+                    if (hashResponse == "0")
+                    {
+                        response = (0, String.Empty);
+                    }
+                    else
+                    {
+                        response = (-1, hashResponse);
+                    }
                 }
                 else
                 {
                     throw new Exception("Internal Item error: ItemTask enum not properly assigned to Type property of Item Description property");
                 }
-                if (Int32.TryParse(response, out int result) && result == 0)
+                if (response.Item1 == 0)
                 {
                     await Dispatcher.UIThread.InvokeAsync(() =>
                     {
@@ -462,17 +464,13 @@ namespace FFmpegAvalonia.ViewModels
                         item.Description.State = ItemState.Complete;
                     });
                 }
-                else if (response != String.Empty)
+                else
                 {
                     await Dispatcher.UIThread.InvokeAsync(() =>
                     {
                         item.Description.State = ItemState.Stopped;
                     });
                     break;
-                }
-                else
-                {
-                    throw new Exception($"Internal task response error: string not valid: \"{response}\"");
                 }
             }
             CurrentItemInProgress = null;

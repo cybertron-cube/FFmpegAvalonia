@@ -104,7 +104,7 @@ namespace FFmpegAvalonia.TaskTypes
             }
             OnComplete();
         }
-        public async Task<string> CopyDirectory(string sourceDir, string outputDir, string ext)
+        public async Task<(int, string)> CopyDirectory(string sourceDir, string outputDir, string ext)
         {
             DirectoryInfo dirInfo = new(sourceDir);
             var files = dirInfo.EnumerateFiles(ext);
@@ -157,10 +157,10 @@ namespace FFmpegAvalonia.TaskTypes
                 if (CancelFlag)
                 {
                     File.Delete(OutputFilePath);
-                    return file.FullName;
+                    return (-1, file.FullName);
                 }
             }
-            return "0";
+            return (0, String.Empty);
         }
         public void Stop()
         {

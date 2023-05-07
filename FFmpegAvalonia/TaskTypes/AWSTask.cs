@@ -72,7 +72,7 @@ namespace FFmpegAvalonia.TaskTypes
             }
             else return false;
         }
-        public async Task<string> UploadDirectoryAsync(ListViewData item, IProgress<double> progress, CancellationToken ct)
+        public async Task<(int, string)> UploadDirectoryAsync(ListViewData item, IProgress<double> progress, CancellationToken ct)
         {
             if (_accessKeyId == null || _secretAccessKey == null || _regionEndpoint == null)
             {
@@ -97,11 +97,11 @@ namespace FFmpegAvalonia.TaskTypes
             {
                 transferUtility.Dispose();
                 s3Client.Dispose();
-                return _lastFileName ??= String.Empty;
+                return (-1, _lastFileName ?? String.Empty);
             }
             transferUtility.Dispose();
             s3Client.Dispose();
-            return "0";
+            return (0, String.Empty);
         }
         private void Request_UploadDirectoryProgressEvent(object? sender, UploadDirectoryProgressArgs e)
         {
