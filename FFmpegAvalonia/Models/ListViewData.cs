@@ -1,7 +1,7 @@
 ﻿using ReactiveUI;
 using System;
 
-namespace FFmpegAvalonia.ViewModels
+namespace FFmpegAvalonia.Models
 {
     public class ListViewData : ReactiveObject
     {

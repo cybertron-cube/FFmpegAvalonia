@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Avalonia;
 using FFmpegAvalonia.ViewModels;
 using AvaloniaMessageBox;
+using FFmpegAvalonia.Models;
 
 namespace FFmpegAvalonia.TaskTypes
 {

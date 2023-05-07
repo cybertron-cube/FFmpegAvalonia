@@ -21,6 +21,7 @@ using Avalonia.ReactiveUI;
 using FFmpegAvalonia.Views;
 using System.Reactive.Linq;
 using AvaloniaMessageBox;
+using FFmpegAvalonia.Models;
 
 namespace FFmpegAvalonia
 {

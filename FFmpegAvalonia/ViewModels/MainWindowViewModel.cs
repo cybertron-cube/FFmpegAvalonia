@@ -23,6 +23,7 @@ using System.Net.Http;
 using FFmpegAvalonia.TaskTypes;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia;
+using FFmpegAvalonia.Models;
 
 namespace FFmpegAvalonia.ViewModels
 {

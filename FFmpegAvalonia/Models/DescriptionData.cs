@@ -5,7 +5,7 @@ using FFmpegAvalonia.AppSettingsX;
 using FFmpegAvalonia.TaskTypes;
 using ReactiveUI;
 
-namespace FFmpegAvalonia.ViewModels
+namespace FFmpegAvalonia.Models
 {
     public class DescriptionData : ReactiveObject
     {

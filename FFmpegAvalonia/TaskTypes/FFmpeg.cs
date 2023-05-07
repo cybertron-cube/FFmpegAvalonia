@@ -15,6 +15,7 @@ using FFmpegAvalonia.ViewModels;
 using System.Collections.ObjectModel;
 using PCLUntils.IEnumerables;
 using System.Linq;
+using FFmpegAvalonia.Models;
 
 namespace FFmpegAvalonia.TaskTypes
 {
