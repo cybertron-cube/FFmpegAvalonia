@@ -378,12 +378,13 @@ namespace FFmpegAvalonia.ViewModels
                 {
                     item.Description.FileCount = Directory.EnumerateFiles(item.Description.SourceDir, $"*{item.Description.FileExt}").Count();
                     CurrentItemInProgress = item;
-                    item.Description.State = ItemState.Progressing;
                 });
                 if (item.Description.FileCount == 0)
                 {
+                    await Dispatcher.UIThread.InvokeAsync(() => item.Description.State = ItemState.Stopped);
                     return (-2, $"No files were detected within the source directory \"{item.Description.SourceDir}\" containing the extension \"{item.Description.FileExt}\"");
                 }
+                else await Dispatcher.UIThread.InvokeAsync(() => item.Description.State = ItemState.Progressing);
                 if (item.Description.Task == ItemTask.Transcode)
                 {
                     FFmp = new FFmpeg(AppSettings.Settings.FFmpegPath);
