@@ -365,6 +365,9 @@ namespace FFmpegAvalonia.ViewModels
                     StartupLocation = WindowStartupLocation.CenterOwner
                 });
             }
+            CurrentItemInProgress = null;
+            FFmp = null;
+            Copier = null;
         }
         private async Task<(int, string)> ProcessTaskItems(CancellationToken ct)
         {
@@ -473,9 +476,6 @@ namespace FFmpegAvalonia.ViewModels
                     break;
                 }
             }
-            CurrentItemInProgress = null;
-            FFmp = null;
-            Copier = null;
             return response;
         }
         private void StopQueue()
