@@ -98,7 +98,7 @@ namespace FFmpegAvalonia.AppSettingsX
                 {
                     property.SetValue(profile, element.Element(property.Name).Value);
                 }
-                Profiles.Add(profile.Name, profile);
+                Profiles[profile.Name] = profile;
             }
         }
         private void ImportSettingsXML(ref string text)
