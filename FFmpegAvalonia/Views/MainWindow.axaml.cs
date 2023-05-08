@@ -21,6 +21,7 @@ using Avalonia.ReactiveUI;
 using FFmpegAvalonia.Views;
 using System.Reactive.Linq;
 using AvaloniaMessageBox;
+using FFmpegAvalonia.Models;
 
 namespace FFmpegAvalonia
 {
@@ -47,20 +48,30 @@ namespace FFmpegAvalonia
             InitializeComponent();
             ViewModel = new(AppSettings);
             DataContext = ViewModel;
-            this.WhenActivated(d => d(ViewModel!.ShowTextEditorDialog.RegisterHandler(DoShowTextEditorDialogAsync))); //COMBINE these into one line????
-            this.WhenActivated(d => d(ViewModel!.ShowTrimDialog.RegisterHandler(DoShowTrimDialogAsync)));//
-            //this.WhenActivated(d => d(ViewModel!.ShowDownloadUpdatesDialog.RegisterHandler(DoShowDownloadUpdatesDialogAsync)));
-            this.WhenActivated(d => d(ViewModel!.ShowMessageBox.RegisterHandler(DoShowMessageBoxAsync)));//
+            this.WhenActivated(d =>
+            {
+                d(ViewModel!.ShowTextEditorDialog.RegisterHandler(DoShowTextEditorDialogAsync));
+                d(ViewModel!.ShowTrimDialog.RegisterHandler(DoShowTrimDialogAsync));
+                d(ViewModel!.ShowMessageBox.RegisterHandler(DoShowMessageBoxAsync));
+            });
+            this.Events().Closed.InvokeCommand(ViewModel.ExitAppCommand);
             AddHandler(DragDrop.DropEvent, Drop!);
             AddHandler(DragDrop.DragOverEvent, DragOver!);
             Closing += MainWindow_Closing;
+            var currentVersion = Assembly.GetExecutingAssembly().GetName().Version;
 #if DEBUG
-            Title = $"FFmpeg Avalonia Debug {Assembly.GetExecutingAssembly().GetName().Version}";
+            Title = $"FFmpeg Avalonia Debug {currentVersion}";
 #else
-            Title = $"FFmpeg Avalonia {Assembly.GetExecutingAssembly().GetName().Version!.ToString(3)}";
+            if (currentVersion.Revision == 0 || currentVersion.Revision == null)
+            {
+                Title = $"FFmpeg Avalonia {currentVersion.ToString(3)}";
+            }
+            else
+            {
+                Title = $"FFmpeg Avalonia Dev Pre-Release {currentVersion}";
+            }
 #endif
         }
-
         private async void MainWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
         {
             if (_confirmShutdown) return;
@@ -81,7 +92,6 @@ namespace FFmpegAvalonia
                 this.Close();
             }
         }
-
         private async Task DoShowTextEditorDialogAsync(InteractionContext<string, string?> interaction)
         {
             var dialog = new TextEditorWindow();
@@ -89,14 +99,6 @@ namespace FFmpegAvalonia
             var result = await dialog.ShowDialog<string?>(this);
             interaction.SetOutput(result);
         }
-        /*private async Task DoShowDownloadUpdatesDialogAsync(InteractionContext<Updater.CheckUpdateResult, Unit> interaction)
-        {
-            var dialog = new DownloadUpdateWindow();
-            dialog.CheckUpdateResult = interaction.Input;
-            dialog.HttpClient = ViewModel.HttpClient;
-            await dialog.ShowDialog(this);
-            interaction.SetOutput(new Unit());
-        }*/
         private async Task DoShowTrimDialogAsync(InteractionContext<TrimWindowViewModel, bool> interaction)
         {
             TrimWindow dialog = new()
@@ -130,7 +132,6 @@ namespace FFmpegAvalonia
             try
             {
                 TextBlock textBlock = (TextBlock)inputElement.GetVisualDescendants().Where(x => x is TextBlock).Single();
-                //TextBlock textBlock = (TextBlock)inputElement.GetVisualChildren().ToList()[0].GetVisualChildren().ToList()[0];
                 textBox = (TextBox)textBlock.TemplatedParent!;
             }
             catch (Exception ex)
@@ -154,13 +155,11 @@ namespace FFmpegAvalonia
                 {
                     MainGrid.RowDefinitions[5].Height = new GridLength(67);
                     ProfileBox.IsEnabled = true;
-                    return;
                 }
             }
             else
             {
-                if (MainGrid.RowDefinitions[5].Height.Value == 0) { }
-                else
+                if (MainGrid.RowDefinitions[5].Height.Value != 0)
                 {
                     MainGrid.RowDefinitions[5].Height = new GridLength(0);
                     ProfileBox.IsEnabled = false;
@@ -169,13 +168,12 @@ namespace FFmpegAvalonia
 
             if (itemTask == ItemTask.UploadAWS)
             {
-                if (OutputLabel.Text != "s3://")
+                if (OutputLabel.Text == "s3://") return;
+                else
                 {
                     OutputLabel.Text = "s3://";
                     OutputDirBrowseBtn.IsEnabled = false;
-                    return;
                 }
-                else return;
             }
             else
             {
@@ -183,24 +181,25 @@ namespace FFmpegAvalonia
                 {
                     OutputDirBrowseBtn.IsEnabled = true;
                 }
-            }
-
-            if (OutputLabel.Text != "Output Directory")
-            {
-                OutputLabel.Text = "Output Directory";
+                if (OutputLabel.Text != "Output Directory")
+                {
+                    OutputLabel.Text = "Output Directory";
+                }
             }
         }
         private async void MainWindow_Opened(object? sender, EventArgs e)
         {
             Trace.TraceInformation("Main Window Opened");
             ViewModel.SelectedTaskType = ItemTask.Copy; //fixes error popup not showing when switching to transcode
+            ViewModel.AutoOverwriteCheck = AppSettings.Settings.AutoOverwriteCheck;
             if (AppSettings.Settings.FFmpegPath == String.Empty)
             {
                 var msgBoxError = MessageBox.GetMessageBox(new MessageBoxParams
                 {
                     Title = "Help!",
                     Message = "We could not find your ffmpeg path please select it",
-                    Buttons = MessageBoxButtons.Ok
+                    Buttons = MessageBoxButtons.Ok,
+                    StartupLocation = WindowStartupLocation.CenterOwner
                 });
                 var result = await msgBoxError.ShowDialog(this);
                 if (result == MessageBoxResult.Ok)
@@ -211,13 +210,21 @@ namespace FFmpegAvalonia
                     {
                         AppSettings.Settings.FFmpegPath = path;
                     }
+                    else
+                    {
+                        this.Close();
+                    }
                 }
                 else
                 {
                     this.Close();
                 }
             }
-            ViewModel.AutoOverwriteCheck = AppSettings.Settings.AutoOverwriteCheck;
+            if (AppSettings.Settings.CheckUpdateOnStart)
+            {
+                Trace.TraceInformation("CheckUpdateOnStart enabled");
+                await ViewModel.CheckForUpdatesCommand.Execute(true);
+            }
 #if DEBUG
             var buttonGrid = this.FindControl<Grid>("ButtonSec");
             var testButton = new Button();
@@ -230,17 +237,6 @@ namespace FFmpegAvalonia
         private void MenuItemClose_Click(object? sender, RoutedEventArgs e)
         {
             this.Close();
-        }
-        private void MainWindow_Closed(object? sender, EventArgs e)
-        {
-            Trace.TraceInformation("Stopping FFmpeg process if running...");
-            ViewModel.FFmp?.Stop();
-            Trace.TraceInformation("Stopping copier instance if running...");
-            ViewModel.Copier?.Stop();
-            Trace.TraceInformation("Saving settings...");
-            AppSettings.Settings.AutoOverwriteCheck = ViewModel.AutoOverwriteCheck;
-            AppSettings.Save();
-            Trace.TraceInformation("Exiting...");
         }
         private async void Browse_Click(object sender, RoutedEventArgs e)
         {
@@ -281,21 +277,6 @@ namespace FFmpegAvalonia
             ViewModel.ExtText = "mkv";
             ViewModel.SelectedTaskType = ItemTask.Trim;
             Debug.WriteLine("TEST");
-
-            /*
-             * aws progress?
-             * 
-             * extra messagebox window if stop queue during aws
-             * 
-             * details panel
-             * 
-             * 3 log files
-             * 
-             * use command for listviewitem_remove
-             * task_listselectionchanged improvement
-             * stopqueue only 2 lines ffmp?.stop and copier?.stop
-             * fully implement cancellation token
-             */
         }
 #endif
         private async void ListViewItem_Edit(object sender, RoutedEventArgs e) //BIND ENABLED INSTEAD

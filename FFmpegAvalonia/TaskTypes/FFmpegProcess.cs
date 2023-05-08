@@ -1,13 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
+﻿using System.Diagnostics;
 using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
 using System.IO;
 
-namespace FFmpegAvalonia
+namespace FFmpegAvalonia.TaskTypes
 {
     public class FFmpegProcess : Process
     {
@@ -38,11 +33,11 @@ namespace FFmpegAvalonia
         }
         private void StartFF(string args, string ffProc)
         {
-            this.StartInfo.FileName = Path.Combine(_FFmpegPath, ffProc);
-            this.StartInfo.Arguments = args;
-            this.Start();
+            StartInfo.FileName = Path.Combine(_FFmpegPath, ffProc);
+            StartInfo.Arguments = args;
+            Start();
             Trace.TraceInformation(ffProc + " " + args);
-            Trace.TraceInformation("Process ID: " + this.Id);
+            Trace.TraceInformation("Process ID: " + Id);
         }
     }
 }

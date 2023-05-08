@@ -1,4 +1,5 @@
-﻿using ReactiveUI;
+﻿using FFmpegAvalonia.Models;
+using ReactiveUI;
 using System;
 using System.Collections.ObjectModel;
 using System.Reactive;

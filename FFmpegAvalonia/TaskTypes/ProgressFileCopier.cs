@@ -7,16 +7,17 @@ using System.Threading.Tasks;
 using Avalonia;
 using FFmpegAvalonia.ViewModels;
 using AvaloniaMessageBox;
+using FFmpegAvalonia.Models;
 
-namespace CyberFileUtils
+namespace FFmpegAvalonia.TaskTypes
 {
     public delegate void ProgressChangeDelegate(double Percentage);
     public delegate void Completedelegate();
 
     public class ProgressFileCopier
     {
-        private string SourceFilePath = String.Empty;
-        private string OutputFilePath = String.Empty;
+        private string SourceFilePath = string.Empty;
+        private string OutputFilePath = string.Empty;
         //private int Total;
         private readonly IProgress<double> _UIProgress;
         private readonly ListViewData _Item;
@@ -58,7 +59,7 @@ namespace CyberFileUtils
                     while ((currentBlockSize = source.Read(buffer, 0, buffer.Length)) > 0)
                     {
                         totalBytes += currentBlockSize;
-                        double percentage = (double)totalBytes * 100.0 / fileLength;
+                        double percentage = totalBytes * 100.0 / fileLength;
 
                         dest.Write(buffer, 0, currentBlockSize);
 
@@ -103,13 +104,13 @@ namespace CyberFileUtils
             }
             OnComplete();
         }
-        public async Task<string> CopyDirectory(string sourceDir, string outputDir, string ext)
+        public async Task<(int, string)> CopyDirectory(string sourceDir, string outputDir, string ext)
         {
             DirectoryInfo dirInfo = new(sourceDir);
             var files = dirInfo.EnumerateFiles(ext);
             //Total = files.Count();
-            this.OnProgressChanged += ProgressFileCopier_OnProgressChanged;
-            this.OnComplete += ProgressFileCopier_OnComplete;
+            OnProgressChanged += ProgressFileCopier_OnProgressChanged;
+            OnComplete += ProgressFileCopier_OnComplete;
             foreach (FileInfo file in files)
             {
                 _Item.Description.CurrentFileNumber += 1;
@@ -156,10 +157,10 @@ namespace CyberFileUtils
                 if (CancelFlag)
                 {
                     File.Delete(OutputFilePath);
-                    return file.FullName;
+                    return (-1, file.FullName);
                 }
             }
-            return "0";
+            return (0, String.Empty);
         }
         public void Stop()
         {

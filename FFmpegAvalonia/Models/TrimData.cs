@@ -2,7 +2,7 @@
 using ReactiveUI;
 using System.IO;
 
-namespace FFmpegAvalonia.ViewModels
+namespace FFmpegAvalonia.Models
 {
     public class TrimData : ReactiveObject
     {

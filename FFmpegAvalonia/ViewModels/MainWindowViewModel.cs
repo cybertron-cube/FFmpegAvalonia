@@ -13,7 +13,6 @@ using FFmpegAvalonia.AppSettingsX;
 using System.Diagnostics;
 using Avalonia.Media;
 using System.Reactive.Linq;
-using CyberFileUtils;
 using Avalonia.Threading;
 using Avalonia.Controls;
 using AvaloniaMessageBox;
@@ -21,6 +20,10 @@ using Cybertron.CUpdater;
 using System.Runtime.InteropServices;
 using System.Reflection;
 using System.Net.Http;
+using FFmpegAvalonia.TaskTypes;
+using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia;
+using FFmpegAvalonia.Models;
 
 namespace FFmpegAvalonia.ViewModels
 {
@@ -134,7 +137,7 @@ namespace FFmpegAvalonia.ViewModels
                         await AddTrim();
                         break;
                     case ItemTask.UploadAWS:
-                        AddUploadAWS();
+                        await AddUploadAWS();
                         break;
                     case ItemTask.Checksum:
                         AddChecksum();
@@ -143,8 +146,9 @@ namespace FFmpegAvalonia.ViewModels
             }, this.IsValid());
             StopQueueCommand = ReactiveCommand.Create(StopQueue, StartQueueCommand.IsExecuting);
             EditorCommand = ReactiveCommand.CreateFromTask<string>(Editor);
-            CheckForUpdatesCommand = ReactiveCommand.CreateFromTask(CheckForUpdates);
+            CheckForUpdatesCommand = ReactiveCommand.CreateFromTask<bool>(CheckForUpdates);
             OpenURLCommand = ReactiveCommand.Create<string>(OpenURL);
+            ExitAppCommand = ReactiveCommand.Create<EventArgs?>(ExitApp);
             #endregion
             #region Subscriptions
             StartQueueCommand.IsExecuting.Subscribe(x => IsQueueRunning = x);
@@ -154,11 +158,11 @@ namespace FFmpegAvalonia.ViewModels
         public ReactiveCommand<Unit, Unit> StartQueueCommand { get; }
         public ReactiveCommand<Unit, Unit> StopQueueCommand { get; }
         public ReactiveCommand<string, Unit> EditorCommand { get; }
-        public ReactiveCommand<Unit, Unit> CheckForUpdatesCommand { get; }
+        public ReactiveCommand<bool, Unit> CheckForUpdatesCommand { get; }
         public ReactiveCommand<string, Unit> OpenURLCommand { get; }
+        public ReactiveCommand<EventArgs?, Unit> ExitAppCommand { get; }
         public Interaction<string, string?> ShowTextEditorDialog;
         public Interaction<TrimWindowViewModel, bool> ShowTrimDialog;
-        //public Interaction<Updater.CheckUpdateResult, Unit> ShowDownloadUpdatesDialog;
         public Interaction<MessageBoxParams, MessageBoxResult> ShowMessageBox;
         private readonly AppSettings AppSettings;
         private void AddTranscode()
@@ -243,8 +247,41 @@ namespace FFmpegAvalonia.ViewModels
                 });
             }
         }
-        private void AddUploadAWS()
+        private async Task AddUploadAWS()
         {
+            var aws = new AWSTask();
+            var result = aws.CheckConfigAndCredentials();
+            if (!result.Item1)
+            {
+                await ShowMessageBox.Handle(new MessageBoxParams
+                {
+                    Title = "Error",
+                    Message = result.Item2,
+                    Buttons = MessageBoxButtons.Ok,
+                    StartupLocation = WindowStartupLocation.CenterOwner
+                });
+                return;
+            }
+            string output = OutputDirText.ToLower();
+            if (!output.StartsWith("s3://"))
+            {
+                output = "s3://" + output;
+            }
+            if (!output.EndsWith("/"))
+            {
+                output += "/";
+            }
+            if (!aws.AssignBucketNameAndKeyPrefix(output))
+            {
+                await ShowMessageBox.Handle(new MessageBoxParams
+                {
+                    Title = "Error",
+                    Message = "The aws link is not valid",
+                    Buttons = MessageBoxButtons.Ok,
+                    StartupLocation = WindowStartupLocation.CenterOwner
+                });
+                return;
+            }
             string fileExt = ExtText.StartsWith('.') ? ExtText : $".{ExtText}";
             TaskListItems.Add(new ListViewData()
             {
@@ -253,9 +290,10 @@ namespace FFmpegAvalonia.ViewModels
                 Description = new DescriptionData()
                 {
                     SourceDir = SourceDirText,
-                    OutputDir = OutputDirText,
+                    OutputDir = output,
                     FileExt = fileExt,
                     FileCount = Directory.EnumerateFiles(SourceDirText, $"*{fileExt}").Count(),
+                    AWS = aws,
                     State = ItemState.Awaiting,
                     Task = ItemTask.UploadAWS,
                     LabelProgressType = ItemLabelProgressType.None,
@@ -287,19 +325,8 @@ namespace FFmpegAvalonia.ViewModels
         }
         private async Task StartQueueAsync(CancellationToken ct)
         {
-            string response = await Task.Run(() => ProcessTaskItems(ct));
-            if (response != "0" && ct.IsCancellationRequested) //Queue stopped
-            {
-                Trace.TraceInformation($"Queue was canceled on file \"{response}\"");
-                await ShowMessageBox.Handle(new MessageBoxParams
-                {
-                    Title = "Queue Canceled",
-                    Message = $"Your queue was canceled on file {response}",
-                    Buttons = MessageBoxButtons.Ok,
-                    StartupLocation = WindowStartupLocation.CenterOwner
-                });
-            }
-            else if (response == "0" && !ct.IsCancellationRequested) //Success
+            (int, string) response = await Task.Run(() => ProcessTaskItems(ct));
+            if (response.Item1 == 0 && !ct.IsCancellationRequested) //Success
             {
                 Trace.TraceInformation("Queue completed");
                 await ShowMessageBox.Handle(new MessageBoxParams
@@ -310,45 +337,54 @@ namespace FFmpegAvalonia.ViewModels
                     StartupLocation = WindowStartupLocation.CenterOwner
                 });
             }
-            else if (response == "1")
+            else if (response.Item1 == -1 && ct.IsCancellationRequested) //Queue stopped
             {
-                Trace.TraceError("No files were detected within the source directory containing that extension");
+                Trace.TraceInformation($"Queue was canceled on file \"{response.Item2}\"");
                 await ShowMessageBox.Handle(new MessageBoxParams
                 {
                     Title = "Queue Canceled",
-                    Header = "An error occured",
-                    Message = "No files were detected within the source directory containing that extension",
+                    Message = $"Your queue was canceled on file {response.Item2}",
                     Buttons = MessageBoxButtons.Ok,
                     StartupLocation = WindowStartupLocation.CenterOwner
                 });
             }
             else
             {
-                Trace.TraceError($"response = \"{response}\" token = \"{ct.IsCancellationRequested}\"");
+                Trace.TraceError($"Error code: {response.Item1}{Environment.NewLine}" +
+                    $"Response = \"{response.Item2}\"{Environment.NewLine}" +
+                    $"Task type = \"{CurrentItemInProgress?.Description.Task.ToString()}\"{Environment.NewLine}" +
+                    $"Cancel requested = \"{ct.IsCancellationRequested}\"");
                 await ShowMessageBox.Handle(new MessageBoxParams
                 {
                     Title = "Error",
-                    Message = $"response = \"{response}\" token = \"{ct.IsCancellationRequested}\"",
+                    Header = $"Error code: {response.Item1}",
+                    Message = $"Response = \"{response.Item2}\"{Environment.NewLine}" +
+                        $"Task type = \"{CurrentItemInProgress?.Description.Task.ToString()}\"{Environment.NewLine}" +
+                        $"Cancel requested = \"{ct.IsCancellationRequested}\"",
                     Buttons = MessageBoxButtons.Ok,
                     StartupLocation = WindowStartupLocation.CenterOwner
                 });
             }
+            CurrentItemInProgress = null;
+            FFmp = null;
+            Copier = null;
         }
-        private async Task<string> ProcessTaskItems(CancellationToken ct)
+        private async Task<(int, string)> ProcessTaskItems(CancellationToken ct)
         {
-            string response = String.Empty;
+            (int, string) response = (-100, "No response set");
             foreach (ListViewData item in TaskListItems)
             {
                 await Dispatcher.UIThread.InvokeAsync(() =>
                 {
                     item.Description.FileCount = Directory.EnumerateFiles(item.Description.SourceDir, $"*{item.Description.FileExt}").Count();
                     CurrentItemInProgress = item;
-                    item.Description.State = ItemState.Progressing;
                 });
                 if (item.Description.FileCount == 0)
                 {
-                    return "1";
+                    await Dispatcher.UIThread.InvokeAsync(() => item.Description.State = ItemState.Stopped);
+                    return (-2, $"No files were detected within the source directory \"{item.Description.SourceDir}\" containing the extension \"{item.Description.FileExt}\"");
                 }
+                else await Dispatcher.UIThread.InvokeAsync(() => item.Description.State = ItemState.Progressing);
                 if (item.Description.Task == ItemTask.Transcode)
                 {
                     FFmp = new FFmpeg(AppSettings.Settings.FFmpegPath);
@@ -393,39 +429,9 @@ namespace FFmpegAvalonia.ViewModels
                 }
                 else if (item.Description.Task == ItemTask.UploadAWS)
                 {
-                    if (item.Description.OutputDir.StartsWith("s3://"))
-                    {
-                        item.Description.OutputDir = item.Description.OutputDir.Replace("s3://", "");
-                    }
-                    if (!item.Description.OutputDir.EndsWith("/"))
-                    {
-                        item.Description.OutputDir += "/";
-                    }
-                    var terminalProcess = Cybertron.GenStatic.GetOSRespectiveTerminalProcess(new ProcessStartInfo
-                    {
-                        Arguments = $"aws s3 cp {item.Description.SourceDir} s3://{item.Description.OutputDir} --exclude \"*\" --include \"*{item.Description.FileExt}\" -recursive"
-                    });
-                    terminalProcess.Start();
-                    await terminalProcess.WaitForExitAsync(ct);
-                    if (ct.IsCancellationRequested)
-                    {
-                        await Dispatcher.UIThread.InvokeAsync(async () =>
-                        {
-                            var msgBoxResult = await ShowMessageBox.Handle(new MessageBoxParams
-                            {
-                                Title = "",
-                                Message = "Would you like to kill the terminal process?",
-                                Buttons = MessageBoxButtons.YesNo,
-                                StartupLocation = WindowStartupLocation.CenterOwner
-                            });
-                            if (msgBoxResult == MessageBoxResult.Yes)
-                            {
-                                terminalProcess.Kill();
-                            }
-                        });
-                        response = "";
-                    }
-                    else response = "0";
+                    response = await item.Description.AWS!.UploadDirectoryAsync(item,
+                        new Progress<double>(x => item.Progress = x),
+                        ct);
                 }
                 else if (item.Description.Task == ItemTask.Checksum)
                 {
@@ -435,17 +441,25 @@ namespace FFmpegAvalonia.ViewModels
                         item.Progress = item.Description.CurrentFileNumber++ / (double)item.Description.FileCount;
                         item.Label = $"{fileName} ({item.Description.CurrentFileNumber}/{item.Description.FileCount})";
                     };
-                    response = await hash.DirectoryHashAsync(item.Description.SourceDir,
+                    var hashResponse = await hash.DirectoryHashAsync(item.Description.SourceDir,
                         Path.Combine(item.Description.OutputDir, "hash_list.txt"),
                         $"*{item.Description.FileExt}",
                         Cybertron.Hashing.HashingAlgorithmTypes.MD5,
                         ct);
+                    if (hashResponse == "0")
+                    {
+                        response = (0, String.Empty);
+                    }
+                    else
+                    {
+                        response = (-1, hashResponse);
+                    }
                 }
                 else
                 {
                     throw new Exception("Internal Item error: ItemTask enum not properly assigned to Type property of Item Description property");
                 }
-                if (Int32.TryParse(response, out int result) && result == 0)
+                if (response.Item1 == 0)
                 {
                     await Dispatcher.UIThread.InvokeAsync(() =>
                     {
@@ -454,7 +468,7 @@ namespace FFmpegAvalonia.ViewModels
                         item.Description.State = ItemState.Complete;
                     });
                 }
-                else if (response != String.Empty)
+                else
                 {
                     await Dispatcher.UIThread.InvokeAsync(() =>
                     {
@@ -462,14 +476,7 @@ namespace FFmpegAvalonia.ViewModels
                     });
                     break;
                 }
-                else
-                {
-                    throw new Exception($"Internal task response error: string not valid: \"{response}\"");
-                }
             }
-            CurrentItemInProgress = null;
-            FFmp = null;
-            Copier = null;
             return response;
         }
         private void StopQueue()
@@ -508,59 +515,33 @@ namespace FFmpegAvalonia.ViewModels
             }
             else { }
         }
-        private async Task Editor(string controlName) //very little makes sense about this command (it's atrocious) but I felt like doing it this way just cause :) honestly this whole project is probably atrocious but I'm learning :)
+        private async Task Editor(string controlName)
         {
             string xml;
-            if (controlName == nameof(Settings))
-            {
-                xml = AppSettings.GetXElementString<Settings>();
-            }
-            else if (controlName == nameof(Profile))
-            {
-                xml = AppSettings.GetXElementString<Profile>();
-            }
-            else return;
+            xml = AppSettings.GetXMLText(controlName);
             string? result = await ShowTextEditorDialog.Handle(xml);
             if (result != null)
             {
-                if (controlName == nameof(Settings))
+                try
                 {
-                    try
-                    {
-                        AppSettings.ImportSettingsXML(result);
-                    }
-                    catch
-                    {
-                        await ShowMessageBox.Handle(new MessageBoxParams
-                        {
-                            Title = "Error",
-                            Message = "The xml could not be parsed",
-                            Buttons = MessageBoxButtons.Ok,
-                            StartupLocation = WindowStartupLocation.CenterOwner
-                        });
-                    }
+                    AppSettings.Save(controlName, ref result);
                 }
-                else if (controlName == nameof(Profile))
+                catch (Exception ex)
                 {
-                    try
+                    Trace.TraceError(ex.ToString());
+                    await ShowMessageBox.Handle(new MessageBoxParams
                     {
-                        AppSettings.ImportProfilesXML(result); 
-                    }
-                    catch
-                    {
-                        await ShowMessageBox.Handle(new MessageBoxParams
-                        {
-                            Title = "Error",
-                            Message = "The xml could not be parsed",
-                            Buttons = MessageBoxButtons.Ok,
-                            StartupLocation = WindowStartupLocation.CenterOwner
-                        });
-                    }
+                        Title = "Error",
+                        Message = "The xml could not be parsed, please check the log for more info",
+                        Buttons = MessageBoxButtons.Ok,
+                        StartupLocation = WindowStartupLocation.CenterOwner
+                    });
                 }
             }
         }
-        private async Task CheckForUpdates()
+        private async Task CheckForUpdates(bool silent)
         {
+            Trace.TraceInformation("Checking for updates...");
             string assetIdentifier;
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
@@ -571,13 +552,38 @@ namespace FFmpegAvalonia.ViewModels
                 assetIdentifier = "linux";
             }
             else throw new Exception("OS Platform not supported");
+            Trace.TraceInformation($"Asset Identifier: {assetIdentifier}");
 
             //catch exceptions
-            var result = await Updater.CheckForUpdatesGitAsync("FFmpegAvalonia",
-                assetIdentifier,
-                "https://api.github.com/repos/Blitznir/FFmpegAvalonia/releases/latest",
-                Assembly.GetExecutingAssembly().GetName().Version!.ToString(3),
-                HttpClient!);
+            Updater.CheckUpdateResult result;
+            Trace.TraceInformation($"Update Target: {AppSettings.Settings.UpdateTarget}");
+            Trace.TraceInformation($"Current Version: {Assembly.GetExecutingAssembly().GetName().Version}");
+            if (AppSettings.Settings.UpdateTarget == "release")
+            {
+                result = await Updater.CheckForUpdatesGitAsync("FFmpegAvalonia",
+                    assetIdentifier,
+                    "https://api.github.com/repos/Blitznir/FFmpegAvalonia/releases/latest",
+                    Assembly.GetExecutingAssembly().GetName().Version!.ToString(),
+                    HttpClient!);
+            }
+            else if (AppSettings.Settings.UpdateTarget == "latest")
+            {
+                result = await Updater.CheckForUpdatesPreIncludeGitAsync("FFmpegAvalonia",
+                    assetIdentifier,
+                    "https://api.github.com/repos/Blitznir/FFmpegAvalonia/releases?per_page=1",
+                    Assembly.GetExecutingAssembly().GetName().Version!.ToString(),
+                    HttpClient!);
+            }
+            else
+            {
+                result = await Updater.CheckForUpdatesGitAsync("FFmpegAvalonia",
+                    assetIdentifier,
+                    "https://api.github.com/repos/Blitznir/FFmpegAvalonia/releases/latest",
+                    Assembly.GetExecutingAssembly().GetName().Version!.ToString(),
+                    HttpClient!);
+            }
+            Trace.TraceInformation($"Result: {result.UpdateAvailable}");
+            Trace.TraceInformation($"Result Version: {result.Version}");
 
             if (result.UpdateAvailable)
             {
@@ -603,6 +609,8 @@ namespace FFmpegAvalonia.ViewModels
                     {
                         FileName = updaterProcessPath,
                     };
+                    Trace.TraceInformation($"Updater Path: {updaterProcessPath}");
+                    Trace.TraceInformation($"This Process Path: {thisProcessPath}");
                     processStartInfo.ArgumentList.Add(result.DownloadLink);
                     Trace.TraceInformation(result.DownloadLink);
                     processStartInfo.ArgumentList.Add(AppContext.BaseDirectory);
@@ -611,11 +619,16 @@ namespace FFmpegAvalonia.ViewModels
                     Trace.TraceInformation(thisProcessPath);
                     processStartInfo.ArgumentList.Add("profiles.xml");
                     processStartInfo.ArgumentList.Add("settings.xml");
+                    Trace.TraceInformation("Starting updater");
                     Process.Start(processStartInfo);
-                    Environment.Exit(1);
+                    ExitApp();
+                }
+                else
+                {
+                    Trace.TraceInformation("Update canceled");
                 }
             }
-            else
+            else if (!silent)
             {
                 await ShowMessageBox.Handle(new MessageBoxParams
                 {
@@ -649,6 +662,23 @@ namespace FFmpegAvalonia.ViewModels
                 }
                 else throw;
             }
+        }
+        public void ExitApp(EventArgs? e = null)
+        {
+            if (e == null)
+            {
+                var app = (IClassicDesktopStyleApplicationLifetime)Application.Current!.ApplicationLifetime!;
+                app.Shutdown();
+                return;
+            }
+            Trace.TraceInformation("Stopping FFmpeg process if running...");
+            FFmp?.Stop();
+            Trace.TraceInformation("Stopping copier instance if running...");
+            Copier?.Stop();
+            Trace.TraceInformation("Saving settings...");
+            AppSettings.Settings.AutoOverwriteCheck = AutoOverwriteCheck;
+            AppSettings.Save();
+            Trace.TraceInformation("Exiting...");
         }
         private readonly HttpClient _httpClient = new();
         public HttpClient HttpClient => _httpClient;

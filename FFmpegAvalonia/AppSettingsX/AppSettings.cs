@@ -28,7 +28,7 @@ namespace FFmpegAvalonia.AppSettingsX
             {
                 Settings = new Settings();
                 ImportSettingsXML();
-                if (Settings.FFmpegPath is null)
+                if (Settings.FFmpegPath == null || Settings.FFmpegPath == String.Empty)
                 {
                     FindFFPath();
                 }
@@ -51,7 +51,43 @@ namespace FFmpegAvalonia.AppSettingsX
                 };
             }
         }
-        public void ImportProfilesXML(string text)
+        public void ImportProfilesXML()
+        {
+            var text = File.ReadAllText(ProfilesXMLPath);
+            ImportProfilesXML(ref text);
+        }
+        public void ImportSettingsXML()
+        {
+            var text = File.ReadAllText(SettingsXMLPath);
+            ImportSettingsXML(ref text);
+        }
+        public string GetXMLText(string name)
+        {
+            Type type = Type.GetType(name, true);
+            if (type == typeof(Profile))
+            {
+                return GetProfilesXElement().ToString();
+            }
+            else if (type == typeof(Settings))
+            {
+                return GetSettingsXElement().ToString();
+            }
+            else throw new ArgumentException(name);
+        }
+        public void Save(string name, ref string text)
+        {
+            Type type = Type.GetType(name, true);
+            if (type == typeof(Profile))
+            {
+                ImportProfilesXML(ref text);
+            }
+            else if (type == typeof(Settings))
+            {
+                ImportSettingsXML(ref text);
+            }
+            else throw new ArgumentException(name);
+        }
+        private void ImportProfilesXML(ref string text)
         {
             XDocument doc = XDocument.Parse(text);
             PropertyInfo[] properties = typeof(Profile).GetProperties();
@@ -62,49 +98,30 @@ namespace FFmpegAvalonia.AppSettingsX
                 {
                     property.SetValue(profile, element.Element(property.Name).Value);
                 }
-                Profiles.Add(profile.Name, profile);
+                Profiles[profile.Name] = profile;
             }
         }
-        public void ImportProfilesXML()
-        {
-            var text = File.ReadAllText(ProfilesXMLPath);
-            ImportProfilesXML(text);
-        }
-        public void ImportSettingsXML(string text)
+        private void ImportSettingsXML(ref string text)
         {
             XDocument doc = XDocument.Parse(text);
             PropertyInfo[] properties = typeof(Settings).GetProperties();
             foreach (PropertyInfo property in properties)
             {
                 object value;
-                bool? boolean = doc.Root.Element(property.Name).Value.TryParseToBool(out string str);
-                if (boolean is null)
+                if (doc.Root.Element(property.Name) != null)
                 {
-                    value = str;
+                    bool? boolean = doc.Root.Element(property.Name).Value.TryParseToBool(out string str);
+                    if (boolean is null)
+                    {
+                        value = str;
+                    }
+                    else
+                    {
+                        value = boolean;
+                    }
+                    property.SetValue(Settings, value);
                 }
-                else
-                {
-                    value = boolean;
-                }
-                property.SetValue(Settings, value);
             }
-        }
-        public void ImportSettingsXML()
-        {
-            var text = File.ReadAllText(SettingsXMLPath);
-            ImportSettingsXML(text);
-        }
-        public string GetXElementString<T>()
-        {
-            if (typeof(T) == typeof(Profile))
-            {
-                return GetProfilesXElement().ToString();
-            }
-            else if (typeof(T) == typeof(Settings))
-            {
-                return GetSettingsXElement().ToString();
-            }
-            else throw new ArgumentException();
         }
         private XElement GetProfilesXElement()
         {
