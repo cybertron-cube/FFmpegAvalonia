@@ -38,6 +38,7 @@ namespace FFmpegAvalonia.TaskTypes
         private readonly object _DisposeLock = new();
         private string _LastStdErrLine = String.Empty;
         private MainWindowViewModel? _ViewModel;
+        private bool _SkipFile;
         public FFmpeg(string ffmpegdir)
         {
             _FFmpegPath = ffmpegdir;
@@ -190,7 +191,11 @@ namespace FFmpegAvalonia.TaskTypes
                     CancelQ = false;
                     return (-1, filePath);
                 }
-                if (_FFProcess.ExitCode != 0)
+                if (_SkipFile)
+                {
+                    _SkipFile = false;
+                }
+                else if (_FFProcess.ExitCode != 0)
                 {
                     int exitCode = _FFProcess.ExitCode;
                     _FFProcess.Dispose();
@@ -244,7 +249,11 @@ namespace FFmpegAvalonia.TaskTypes
                         CancelQ = false;
                         return (-1, data.FileInfo.FullName);
                     }
-                    if (_FFProcess.ExitCode == 0)
+                    if (_SkipFile)
+                    {
+                        _SkipFile = false;
+                    }
+                    else if (_FFProcess.ExitCode == 0)
                     {
                         string rename = data.FileInfo.FullName;
                         data.FileInfo.Delete();
@@ -292,10 +301,17 @@ namespace FFmpegAvalonia.TaskTypes
                         CancelQ = false;
                         return (-1, data.FileInfo.FullName);
                     }
-                    if (_FFProcess.ExitCode != 0)
+                    if (_SkipFile)
+                    {
+                        _SkipFile = false;
+                    }
+                    else if (_FFProcess.ExitCode != 0)
                     {
                         int exitCode = _FFProcess.ExitCode;
-                        _FFProcess.Dispose();
+                        lock (_DisposeLock)
+                        {
+                            _FFProcess.Dispose(); 
+                        }
                         return (exitCode, _LastStdErrLine);
                     }
                     lock (_DisposeLock)
@@ -421,6 +437,7 @@ namespace FFmpegAvalonia.TaskTypes
                             }
                             else
                             {
+                                _SkipFile = true;
                                 await _FFProcess.StandardInput.WriteLineAsync("n");
                             }
                         }, DispatcherPriority.MaxValue);
