@@ -271,7 +271,7 @@ namespace FFmpegAvalonia.TaskTypes
                         int exitCode = _FFProcess.ExitCode;
                         lock (_DisposeLock)
                         {
-                        _FFProcess.Dispose();
+                            _FFProcess.Dispose();
                         }
                         Trace.TraceInformation($"Exited with code {exitCode} on {data.FileInfo.FullName}");
                         return (exitCode, _LastStdErrLine);
@@ -324,7 +324,7 @@ namespace FFmpegAvalonia.TaskTypes
                         int exitCode = _FFProcess.ExitCode;
                         lock (_DisposeLock)
                         {
-                            _FFProcess.Dispose(); 
+                            _FFProcess.Dispose();
                         }
                         Trace.TraceInformation($"Exited with code {exitCode} on {data.FileInfo.FullName}");
                         return (exitCode, _LastStdErrLine);
@@ -426,7 +426,7 @@ namespace FFmpegAvalonia.TaskTypes
                 if (sb.EndsWith(Environment.NewLine))
                 {
                     _LastStdErrLine = sb.ToStringTrimEnd(Environment.NewLine);
-                    sb = new StringBuilder();
+                    sb.Clear();
                     Trace.TraceInformation(_LastStdErrLine);
                 }
                 else if (sb.Contains("[y/N]", StringComparison.OrdinalIgnoreCase))
@@ -460,7 +460,7 @@ namespace FFmpegAvalonia.TaskTypes
                             }
                         }, DispatcherPriority.MaxValue);
                     }
-                    sb = new StringBuilder();
+                    sb.Clear();
                     Trace.TraceInformation(line);
                 }
             }
