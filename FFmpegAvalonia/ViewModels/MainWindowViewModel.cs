@@ -481,6 +481,9 @@ namespace FFmpegAvalonia.ViewModels
         }
         private void StopQueue()
         {
+            Trace.TraceInformation("Stopping queue");
+            Trace.TraceInformation("CurrentItemInProgress is null: " + (CurrentItemInProgress == null).ToString());
+            Trace.TraceInformation("CurrentItemInProgress Task: " + CurrentItemInProgress?.Description.Task.ToString());
             if (CurrentItemInProgress?.Description.Task == ItemTask.Transcode || CurrentItemInProgress?.Description.Task == ItemTask.Trim)
             {
                 if (FFmp != null)
@@ -489,6 +492,7 @@ namespace FFmpegAvalonia.ViewModels
                 }
                 else
                 {
+                    Trace.TraceInformation("FFmp seems to be null");
                     ShowMessageBox.Handle(new MessageBoxParams
                     {
                         Title = "Error",
@@ -505,6 +509,7 @@ namespace FFmpegAvalonia.ViewModels
                 }
                 else
                 {
+                    Trace.TraceInformation("Copier seems to be null");
                     ShowMessageBox.Handle(new MessageBoxParams
                     {
                         Title = "Error",
@@ -513,7 +518,10 @@ namespace FFmpegAvalonia.ViewModels
                     });
                 }
             }
-            else { }
+            else
+            {
+                Trace.TraceInformation("Using cancellation token");
+            }
         }
         private async Task Editor(string controlName)
         {

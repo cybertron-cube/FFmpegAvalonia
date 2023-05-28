@@ -168,7 +168,7 @@ namespace FFmpegAvalonia.TaskTypes
             //NewFFProcess("ffmpeg");
             //Trace.TraceInformation(_FFProcess.StartInfo.FileName);
             //_FFProcess.OutputDataReceived += new DataReceivedEventHandler(StdOutHandler);
-
+            Trace.TraceInformation($"Starting transcode to {outputDir}");
             foreach (var filePath in _FilesDict.Keys)
             {
                 NewFFProcess();
@@ -178,6 +178,7 @@ namespace FFmpegAvalonia.TaskTypes
                 {
                     _FFProcess.Dispose();
                     CancelQ = false;
+                    Trace.TraceInformation($"Canceled on {filePath}");
                     return (-1, filePath);
                 }
                 _FFProcess.StartMpeg($"-i \"{filePath}\" -progress pipe:1 {args} \"{Path.Combine(outputDir, Path.GetFileNameWithoutExtension(filePath) + ext)}\"");
@@ -189,6 +190,7 @@ namespace FFmpegAvalonia.TaskTypes
                 {
                     _FFProcess.Dispose();
                     CancelQ = false;
+                    Trace.TraceInformation($"Canceled on {filePath}");
                     return (-1, filePath);
                 }
                 if (_SkipFile)
@@ -199,6 +201,7 @@ namespace FFmpegAvalonia.TaskTypes
                 {
                     int exitCode = _FFProcess.ExitCode;
                     _FFProcess.Dispose();
+                    Trace.TraceInformation($"Exited with code {exitCode} on {filePath}");
                     return (exitCode, _LastStdErrLine);
                 }
                 _TotalPrevFrameProgress += _FilesDict[filePath];
@@ -206,6 +209,7 @@ namespace FFmpegAvalonia.TaskTypes
                 {
                     _FFProcess.Dispose();
                 }
+                Trace.TraceInformation($"File transcode, \"{filePath}\", complete");
             }
             //_FFProcess.Dispose();
             return (0, String.Empty);
@@ -224,6 +228,7 @@ namespace FFmpegAvalonia.TaskTypes
                 item.Description.FileCount = trimDataValidTimeCodes.Count();
                 item.Label = $"{item.Name} ({item.Description.CurrentFileNumber}/{item.Description.FileCount})";
             });
+            Trace.TraceInformation($"Starting trim to {outputDir} from {sourceDir}");
             if (outputDir == string.Empty || sourceDir == outputDir)
             {
                 foreach (TrimData data in trimDataValidTimeCodes)
@@ -235,6 +240,7 @@ namespace FFmpegAvalonia.TaskTypes
                     {
                         _FFProcess.Dispose();
                         CancelQ = false;
+                        Trace.TraceInformation($"Canceled on {data.FileInfo.FullName}");
                         return (-1, data.FileInfo.FullName);
                     }
                     string newFile = Path.Combine(data.FileInfo.Directory.FullName, $"_{data.FileInfo.Name}");
@@ -247,6 +253,7 @@ namespace FFmpegAvalonia.TaskTypes
                     {
                         _FFProcess.Dispose();
                         CancelQ = false;
+                        Trace.TraceInformation($"Canceled on {data.FileInfo.FullName}");
                         return (-1, data.FileInfo.FullName);
                     }
                     if (_SkipFile)
@@ -262,7 +269,11 @@ namespace FFmpegAvalonia.TaskTypes
                     else
                     {
                         int exitCode = _FFProcess.ExitCode;
+                        lock (_DisposeLock)
+                        {
                         _FFProcess.Dispose();
+                        }
+                        Trace.TraceInformation($"Exited with code {exitCode} on {data.FileInfo.FullName}");
                         return (exitCode, _LastStdErrLine);
                     }
                     lock (_DisposeLock)
@@ -273,6 +284,7 @@ namespace FFmpegAvalonia.TaskTypes
                     {
                         item.Label = $"{item.Name} ({++item.Description.CurrentFileNumber}/{item.Description.FileCount})";
                     });
+                    Trace.TraceInformation($"File trim, \"{data.FileInfo.FullName}\", complete");
                 }
                 return (0, String.Empty);
             }
@@ -287,6 +299,7 @@ namespace FFmpegAvalonia.TaskTypes
                     {
                         _FFProcess.Dispose();
                         CancelQ = false;
+                        Trace.TraceInformation($"Canceled on {data.FileInfo.FullName}");
                         return (-1, data.FileInfo.FullName);
                     }
                     string newFile = Path.Combine(outputDir, data.FileInfo.Name);
@@ -299,6 +312,7 @@ namespace FFmpegAvalonia.TaskTypes
                     {
                         _FFProcess.Dispose();
                         CancelQ = false;
+                        Trace.TraceInformation($"Canceled on {data.FileInfo.FullName}");
                         return (-1, data.FileInfo.FullName);
                     }
                     if (_SkipFile)
@@ -312,6 +326,7 @@ namespace FFmpegAvalonia.TaskTypes
                         {
                             _FFProcess.Dispose(); 
                         }
+                        Trace.TraceInformation($"Exited with code {exitCode} on {data.FileInfo.FullName}");
                         return (exitCode, _LastStdErrLine);
                     }
                     lock (_DisposeLock)
@@ -322,6 +337,7 @@ namespace FFmpegAvalonia.TaskTypes
                     {
                         item.Label = $"{item.Name} ({++item.Description.CurrentFileNumber}/{item.Description.FileCount})";
                     });
+                    Trace.TraceInformation($"File trim, \"{data.FileInfo.FullName}\", complete");
                 }
                 return (0, String.Empty);
             }
@@ -341,10 +357,12 @@ namespace FFmpegAvalonia.TaskTypes
                 }
                 catch (ObjectDisposedException)
                 {
+                    Trace.TraceInformation("FF Process Object Disposed Exception");
                     return;
                 }
                 catch (InvalidOperationException)
                 {
+                    Trace.TraceInformation("FF Process Invalid Operation Exception");
                     return;
                 }
             }
@@ -454,10 +472,10 @@ namespace FFmpegAvalonia.TaskTypes
                 Trace.TraceInformation("STDOUT**--" + e.Data);
                 if (e.Data.Contains("frame="))
                 {
-                    _LastFrame = int.Parse(e.Data.Split("=")[1].Trim()); //trim
-                    Trace.TraceInformation(_LastFrame.ToString());
+                    _LastFrame = int.Parse(e.Data.Split("=")[1].Trim());
+                    Trace.TraceInformation($"Progress: {_LastFrame} frames finished (file)");
                     double progress = ((double)_LastFrame + _TotalPrevFrameProgress) / _TotalDirFrames;
-                    Trace.TraceInformation($"Progress: {progress} frames finished");
+                    Trace.TraceInformation($"Progress: {progress} percentage frames finished (directory)");
                     _UIProgress!.Report(((double)_LastFrame + _TotalPrevFrameProgress) / _TotalDirFrames);
                 }
             }
@@ -470,7 +488,7 @@ namespace FFmpegAvalonia.TaskTypes
                 if (e.Data.Contains("out_time="))
                 {
                     double currentTime = double.Parse(e.Data.Split("=")[1].Replace(":", "").Replace(".", ""));
-                    Trace.TraceInformation($"Progress: {currentTime}");
+                    Trace.TraceInformation($"Progress: {currentTime} (current time) / {_EndTime} (end time)");
                     _UIProgress!.Report(currentTime / _EndTime);
                 }
                 else if (e.Data.Contains("progress=end"))
