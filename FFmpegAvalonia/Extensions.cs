@@ -143,8 +143,6 @@ namespace ExtensionMethods
             {
                 "true" => true,
                 "false" => false,
-                "1" => true,
-                "0" => false,
                 _ => null,
             };
         }

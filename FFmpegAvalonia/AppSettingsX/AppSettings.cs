@@ -107,19 +107,21 @@ namespace FFmpegAvalonia.AppSettingsX
             PropertyInfo[] properties = typeof(Settings).GetProperties();
             foreach (PropertyInfo property in properties)
             {
-                object value;
                 if (doc.Root.Element(property.Name) != null)
                 {
                     bool? boolean = doc.Root.Element(property.Name).Value.TryParseToBool(out string str);
-                    if (boolean is null)
+                    if (boolean != null)
                     {
-                        value = str;
+                        property.SetValue(Settings, boolean);
+                        continue;
                     }
-                    else
+                    bool isInt32 = Int32.TryParse(str, out int num);
+                    if (isInt32)
                     {
-                        value = boolean;
+                        property.SetValue(Settings, num);
+                        continue;
                     }
-                    property.SetValue(Settings, value);
+                    property.SetValue(Settings, str);
                 }
             }
         }
