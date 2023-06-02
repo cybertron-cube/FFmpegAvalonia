@@ -563,6 +563,10 @@ namespace FFmpegAvalonia.ViewModels
             {
                 assetIdentifier = "linux";
             }
+            else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+            {
+                assetIdentifier = "osx";
+            }
             else throw new Exception("OS Platform not supported");
             Trace.TraceInformation($"Asset Identifier: {assetIdentifier}");
 
