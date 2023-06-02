@@ -399,7 +399,9 @@ namespace FFmpegAvalonia.ViewModels
                         outputDir: item.Description.OutputDir,
                         ext: item.Description.Profile.OutputExtension,
                         progress: new Progress<double>(x => item.Progress = x),
-                        viewModel: this
+                        viewModel: this,
+                        ct: ct,
+                        setStreamReads: AppSettings.Settings.SetStreamReadersFF
                     );
                 }
                 else if (item.Description.Task == ItemTask.Copy)
@@ -424,7 +426,9 @@ namespace FFmpegAvalonia.ViewModels
                         trimData: item.Description.TrimData!,
                         progress: new Progress<double>(x => item.Progress = x),
                         item: item,
-                        viewModel: this
+                        viewModel: this,
+                        ct: ct,
+                        setStreamReads: AppSettings.Settings.SetStreamReadersFF
                     );
                 }
                 else if (item.Description.Task == ItemTask.UploadAWS)
