@@ -118,6 +118,14 @@ namespace FFmpegAvalonia.TaskTypes
                     EnableRaisingEvents = true
                 };
             }
+            else
+            {
+                _FFProcess = new FFmpegProcess(_FFmpegPath)
+                {
+                    StartInfo = DefaultStartInfo(),
+                    EnableRaisingEvents = true
+                };
+            }
         }
         public string GetFrameCountApproximate(string dir, string searchPattern, string args)
         {
@@ -228,6 +236,8 @@ namespace FFmpegAvalonia.TaskTypes
                 Trace.TraceInformation("Handling neither standard output nor standard error");
             else if (setStreamReads == 6)
                 Trace.TraceInformation("Handling neither standard output nor standard error with window");
+            else if (setStreamReads == 7)
+                Trace.TraceInformation("Handling both standard output and standard error lbl");
             else
                 return (-7, "SetStreamReadersFF value in settings can only be set a value in the range of 0-6");
             _ViewModel = viewModel;
@@ -239,6 +249,35 @@ namespace FFmpegAvalonia.TaskTypes
                 if (setStreamReads == 0 || setStreamReads == 1 || setStreamReads == 3)
                 {
                     _FFProcess.OutputDataReceived += new DataReceivedEventHandler(StdOutHandler);
+                }
+                if (setStreamReads == 7)
+                {
+                    if (File.Exists(filePath))
+                    {
+                        await Dispatcher.UIThread.InvokeAsync(async () =>
+                        {
+                            var msgBox = AvaloniaMessageBox.MessageBox.GetMessageBox(new AvaloniaMessageBox.MessageBoxParams
+                            {
+                                Buttons = AvaloniaMessageBox.MessageBoxButtons.YesNo,
+                                Title = "File already exists",
+                                Message = filePath + " already exists would you like to overwrite?"
+                            });
+                            var app = (IClassicDesktopStyleApplicationLifetime)Application.Current!.ApplicationLifetime!;
+                            var result = await msgBox.ShowDialog(app.MainWindow);
+                            if (result == AvaloniaMessageBox.MessageBoxResult.Yes)
+                            {
+                                await _FFProcess.StandardInput.WriteLineAsync("y");
+                            }
+                            else
+                            {
+                                _SkipFile = true;
+                                await _FFProcess.StandardInput.WriteLineAsync("n");
+                            }
+                        }, DispatcherPriority.MaxValue);
+                    }
+                    if (_SkipFile) { _SkipFile = false; goto SkipFile; }
+                    _FFProcess.OutputDataReceived += new DataReceivedEventHandler(StdOutHandler);
+                    _FFProcess.ErrorDataReceived += (object sendingProcess, DataReceivedEventArgs e) => { if (e.Data != null) Trace.TraceInformation("STDERR**--" + e.Data); };
                 }
                 if (CancelQ)
                 {
@@ -254,7 +293,6 @@ namespace FFmpegAvalonia.TaskTypes
                 {
                     _FFProcess.BeginOutputReadLine();
                     await ReadStdErr();
-                    //await _FFProcess.WaitForExitAsync();
                 }
                 else if (setStreamReads == 1 || setStreamReads == 3)
                 {
@@ -263,30 +301,39 @@ namespace FFmpegAvalonia.TaskTypes
                     {
                         await _FFProcess.WaitForExitAsync(ct);
                     }
-                    catch (TaskCanceledException)
+                    catch (TaskCanceledException ex)
                     {
+                        Debug.WriteLine(ex.ToString());
+                        await _FFProcess.WaitForExitAsync();
+                        //return (-1, filePath);
                     }
                 }
                 else if (setStreamReads == 2 || setStreamReads == 4)
                 {
                     await ReadStdErr();
-                    //await _FFProcess.WaitForExitAsync();
+                }
+                else if (setStreamReads == 7)
+                {
+                    _FFProcess.BeginOutputReadLine();
+                    _FFProcess.BeginErrorReadLine();
+                    await _FFProcess.WaitForExitAsync();
                 }
                 else
                 {
                     try
                     {
-                        await _FFProcess.WaitForExitAsync(ct); 
+                        await _FFProcess.WaitForExitAsync(ct);
                     }
                     catch (TaskCanceledException)
                     {
+                        _FFProcess.Kill();
+                        await _FFProcess.WaitForExitAsync();
+                        //return (-1, filePath);
                     }
                 }
                 Trace.TraceInformation("Process Exit Code: " + _FFProcess.ExitCode);
                 if (CancelQ)
                 {
-                    if (setStreamReads == 5 || setStreamReads == 6)
-                        _FFProcess.Kill();
                     _FFProcess.Dispose();
                     //CancelQ = false;
                     Trace.TraceInformation($"Canceled on {filePath}");
@@ -303,6 +350,7 @@ namespace FFmpegAvalonia.TaskTypes
                     Trace.TraceInformation($"Exited with code {exitCode} on {filePath}");
                     return (exitCode, _LastStdErrLine);
                 }
+                SkipFile:
                 _TotalPrevFrameProgress += _FilesDict[filePath];
                 lock (_DisposeLock)
                 {
@@ -383,6 +431,7 @@ namespace FFmpegAvalonia.TaskTypes
                         }
                         catch (TaskCanceledException)
                         {
+                            await _FFProcess.WaitForExitAsync();
                         }
                     }
                     else if (setStreamReads == 2 || setStreamReads == 4)
@@ -398,6 +447,8 @@ namespace FFmpegAvalonia.TaskTypes
                         }
                         catch (TaskCanceledException)
                         {
+                            _FFProcess.Kill();
+                            await _FFProcess.WaitForExitAsync();
                         }
                     }
                     Trace.TraceInformation("Process Exit Code: " + _FFProcess.ExitCode);
@@ -478,6 +529,7 @@ namespace FFmpegAvalonia.TaskTypes
                         }
                         catch (TaskCanceledException)
                         {
+                            await _FFProcess.WaitForExitAsync();
                         }
                     }
                     else if (setStreamReads == 2 || setStreamReads == 4)
@@ -493,6 +545,8 @@ namespace FFmpegAvalonia.TaskTypes
                         }
                         catch (TaskCanceledException)
                         {
+                            _FFProcess.Kill();
+                            await _FFProcess.WaitForExitAsync();
                         }
                     }
                     Trace.TraceInformation("Process Exit Code: " + _FFProcess.ExitCode);
@@ -613,15 +667,17 @@ namespace FFmpegAvalonia.TaskTypes
             while ((await sr.ReadAsync(buffer, 0, 1)) > 0)
             {
                 sb.Append(buffer[0]);
-                if (sb.EndsWith(Environment.NewLine))
+                if (buffer[0] == '\n')
                 {
                     _LastStdErrLine = sb.ToStringTrimEnd(Environment.NewLine);
                     sb.Clear();
                     Trace.TraceInformation(_LastStdErrLine);
                 }
-                else if (sb.Contains("[y/N]", StringComparison.OrdinalIgnoreCase))
+                else if (buffer[0] == ']' && sb[^2] == 'N' && sb[^3] == '/' && sb[^4] == 'y' && sb[^5] == '[') //only N] should be necessary to search for but just in case we search for the whole thing
                 {
                     Trace.TraceInformation("Yes/No prompt found");
+                    await sr.ReadAsync(buffer, 0, 1); //This should be space character ' '
+                    Debug.WriteLine(buffer[0]);
                     _LastStdErrLine = sb.ToString();
                     if (_ViewModel!.AutoOverwriteCheck)
                     {
