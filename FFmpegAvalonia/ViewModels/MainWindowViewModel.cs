@@ -325,7 +325,26 @@ namespace FFmpegAvalonia.ViewModels
         }
         private async Task StartQueueAsync(CancellationToken ct)
         {
-            (int, string) response = await Task.Run(() => ProcessTaskItems(ct));
+            (int, string) response;
+            try
+            {
+                response = await Task.Run(() => ProcessTaskItems(ct));
+            }
+            catch (Exception ex)
+            {
+                Trace.TraceError($"An exception occurred in processing items task{Environment.NewLine}" +
+                    $"Exception = \"{ex}\"{Environment.NewLine}" +
+                    $"Task type = \"{CurrentItemInProgress?.Description.Task.ToString()}\"{Environment.NewLine}" +
+                    $"Cancel requested = \"{ct.IsCancellationRequested}\"");
+                await ShowMessageBox.Handle(new MessageBoxParams
+                {
+                    Title = "Exception",
+                    Message = ex.ToString(),
+                    Buttons = MessageBoxButtons.Ok,
+                    StartupLocation = WindowStartupLocation.CenterOwner
+                });
+                return;
+            }
             if (response.Item1 == 0 && !ct.IsCancellationRequested) //Success
             {
                 Trace.TraceInformation("Queue completed");
