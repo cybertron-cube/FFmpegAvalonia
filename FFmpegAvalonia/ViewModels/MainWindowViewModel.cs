@@ -584,7 +584,15 @@ namespace FFmpegAvalonia.ViewModels
             }
             else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
             {
-                assetIdentifier = "osx";
+                if (RuntimeInformation.ProcessArchitecture == Architecture.Arm64)
+                {
+                    assetIdentifier = "osx-arm64";
+                }
+                else if (RuntimeInformation.ProcessArchitecture == Architecture.X64)
+                {
+                    assetIdentifier = "osx-x64";
+                }
+                else throw new Exception("OS Platform not supported");
             }
             else throw new Exception("OS Platform not supported");
             Trace.TraceInformation($"Asset Identifier: {assetIdentifier}");
