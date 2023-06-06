@@ -21,33 +21,33 @@ namespace FFmpegAvalonia.TaskTypes
 {
     public class FFmpeg
     {
-        private FFmpegProcess _FFProcess;
-        private readonly string _FFmpegPath;
-        private readonly ConcurrentDictionary<string, int> _FilesDict;
-        private int _LastFrame;
-        private long _CancelQ = 0;
-        public bool CancelQ
+        private FFmpegProcess _ffProcess;
+        private readonly string _ffMpegPath;
+        private readonly ConcurrentDictionary<string, int> _filesDict;
+        private int _lastFrame;
+        private long _queueCanceled = 0;
+        public bool QueueCanceled
         {
-            get => Interlocked.Read(ref _CancelQ) == 1;
-            set => Interlocked.Exchange(ref _CancelQ, Convert.ToInt64(value));
+            get => Interlocked.Read(ref _queueCanceled) == 1;
+            private set => Interlocked.Exchange(ref _queueCanceled, Convert.ToInt64(value));
         }
-        private int _TotalPrevFrameProgress;
-        private int _TotalDirFrames;
-        private double _EndTime;
-        private IProgress<double>? _UIProgress;
-        private readonly object _DisposeLock = new();
-        private string _LastStdErrLine = String.Empty;
-        private MainWindowViewModel? _ViewModel;
-        private bool _SkipFile;
+        private int _totalPrevFrameProgress;
+        private int _totalDirFrames;
+        private double _endTime;
+        private IProgress<double>? _uIProgress;
+        private readonly object _disposeLock = new();
+        private string _lastStdErrLine = String.Empty;
+        private MainWindowViewModel? _viewModel;
+        private bool _skipFile;
         public FFmpeg(string ffmpegdir)
         {
-            _FFmpegPath = ffmpegdir;
-            _FFProcess = new FFmpegProcess(_FFmpegPath)
+            _ffMpegPath = ffmpegdir;
+            _ffProcess = new FFmpegProcess(_ffMpegPath)
             {
                 StartInfo = DefaultStartInfo(),
                 EnableRaisingEvents = true,
             };
-            _FilesDict = new ConcurrentDictionary<string, int>();
+            _filesDict = new ConcurrentDictionary<string, int>();
         }
         private static ProcessStartInfo DefaultStartInfo()
         {
@@ -60,59 +60,11 @@ namespace FFmpegAvalonia.TaskTypes
                 RedirectStandardError = true,
             };
         }
-        private void NewFFProcess(int redirect = 0)
+        private void NewFFProcess(bool detachProcess = false)
         {
-            if (redirect == 0)
+            if (detachProcess)
             {
-                _FFProcess = new FFmpegProcess(_FFmpegPath)
-                {
-                    StartInfo = DefaultStartInfo(),
-                    EnableRaisingEvents = true
-                };
-            }
-            else if (redirect == 1)
-            {
-                _FFProcess = new FFmpegProcess(_FFmpegPath)
-                {
-                    StartInfo = new() { CreateNoWindow = true, RedirectStandardInput = true, RedirectStandardOutput = true },
-                    EnableRaisingEvents = true
-                };
-            }
-            else if (redirect == 2)
-            {
-                _FFProcess = new FFmpegProcess(_FFmpegPath)
-                {
-                    StartInfo = new() { CreateNoWindow = true, RedirectStandardInput = true, RedirectStandardError = true },
-                    EnableRaisingEvents = true
-                };
-            }
-            else if (redirect == 3)
-            {
-                _FFProcess = new FFmpegProcess(_FFmpegPath)
-                {
-                    StartInfo = new() { RedirectStandardInput = true, RedirectStandardOutput = true },
-                    EnableRaisingEvents = true
-                };
-            }
-            else if (redirect == 4)
-            {
-                _FFProcess = new FFmpegProcess(_FFmpegPath)
-                {
-                    StartInfo = new() { RedirectStandardInput = true, RedirectStandardError = true },
-                    EnableRaisingEvents = true
-                };
-            }
-            else if (redirect == 5)
-            {
-                _FFProcess = new FFmpegProcess(_FFmpegPath)
-                {
-                    StartInfo = new() { CreateNoWindow = true },
-                    EnableRaisingEvents = true
-                };
-            }
-            else if (redirect == 6)
-            {
-                _FFProcess = new FFmpegProcess(_FFmpegPath)
+                _ffProcess = new FFmpegProcess(_ffMpegPath)
                 {
                     StartInfo = new(),
                     EnableRaisingEvents = true
@@ -120,7 +72,7 @@ namespace FFmpegAvalonia.TaskTypes
             }
             else
             {
-                _FFProcess = new FFmpegProcess(_FFmpegPath)
+                _ffProcess = new FFmpegProcess(_ffMpegPath)
                 {
                     StartInfo = DefaultStartInfo(),
                     EnableRaisingEvents = true
@@ -154,30 +106,30 @@ namespace FFmpegAvalonia.TaskTypes
 
                 if (!skipFrameRateCalc)
                 {
-                    _FFProcess.StartProbe($"-v 0 -of csv=p=0 -select_streams v:0 -show_entries stream=r_frame_rate \"{file.FullName}\"");
-                    string output = _FFProcess.StandardOutput.ReadToEnd().Trim();
+                    _ffProcess.StartProbe($"-v 0 -of csv=p=0 -select_streams v:0 -show_entries stream=r_frame_rate \"{file.FullName}\"");
+                    string output = _ffProcess.StandardOutput.ReadToEnd().Trim();
                     frameRate = decimal.Parse(output.Split(@"/")[0]) / decimal.Parse(output.Split(@"/")[1]);
 
                     Trace.TraceInformation("Framerate: " + frameRate);
-                    _FFProcess.WaitForExit();
+                    _ffProcess.WaitForExit();
 
-                    Trace.TraceInformation("Process Exit Code: " + _FFProcess.ExitCode);
+                    Trace.TraceInformation("Process Exit Code: " + _ffProcess.ExitCode);
                 }
 
-                _FFProcess.StartProbe($"-v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 \"{file.FullName}\"");
-                decimal totalSeconds = decimal.Parse(_FFProcess.StandardOutput.ReadToEnd().Trim());
+                _ffProcess.StartProbe($"-v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 \"{file.FullName}\"");
+                decimal totalSeconds = decimal.Parse(_ffProcess.StandardOutput.ReadToEnd().Trim());
 
                 Trace.TraceInformation("Total Seconds: " + totalSeconds);
-                _FFProcess.WaitForExit();
+                _ffProcess.WaitForExit();
 
-                Trace.TraceInformation("Process Exit Code: " + _FFProcess.ExitCode);
+                Trace.TraceInformation("Process Exit Code: " + _ffProcess.ExitCode);
 
                 decimal totalFrames = frameRate * totalSeconds;
-                _FilesDict.TryAdd(file.FullName, (int)totalFrames); //rounds down
-                _TotalDirFrames += (int)totalFrames;
+                _filesDict.TryAdd(file.FullName, (int)totalFrames); //rounds down
+                _totalDirFrames += (int)totalFrames;
                 sb.Append(" -- " + (int)totalFrames + " -- " + totalFrames + Environment.NewLine);
             }
-            _FFProcess.Dispose();
+            _ffProcess.Dispose();
             return sb.ToString();
         }
         public string GetFrameCountFromPackets(string dir, string searchPattern)
@@ -189,14 +141,14 @@ namespace FFmpegAvalonia.TaskTypes
             foreach (var file in files)
             {
                 sb.Append(file.FullName);
-                _FFProcess.StartInfo.Arguments = $"-v error -select_streams v:0 -count_packets -show_entries stream=nb_read_packets \"{file.FullName}\"";
-                _FFProcess.Start();
-                int totalFrames = int.Parse(_FFProcess.StandardOutput.ReadToEnd().Split("=")[1].Split("[")[0].Trim());
-                _FFProcess.WaitForExit();
-                _FilesDict.TryAdd(file.FullName, totalFrames);
+                _ffProcess.StartInfo.Arguments = $"-v error -select_streams v:0 -count_packets -show_entries stream=nb_read_packets \"{file.FullName}\"";
+                _ffProcess.Start();
+                int totalFrames = int.Parse(_ffProcess.StandardOutput.ReadToEnd().Split("=")[1].Split("[")[0].Trim());
+                _ffProcess.WaitForExit();
+                _filesDict.TryAdd(file.FullName, totalFrames);
                 sb.Append(" -- " + totalFrames + Environment.NewLine);
             }
-            _FFProcess.Dispose();
+            _ffProcess.Dispose();
             return sb.ToString();
         }
         public string GetFrameCount(string dir, string searchPattern)
@@ -208,159 +160,132 @@ namespace FFmpegAvalonia.TaskTypes
             foreach (var file in files)
             {
                 sb.Append(file.FullName);
-                _FFProcess.StartInfo.Arguments = $"-v error -select_streams v:0 -count_frames -show_entries stream=nb_read_frames \"{file.FullName}\"";
-                _FFProcess.Start();
-                int totalFrames = int.Parse(_FFProcess.StandardOutput.ReadToEnd().Split("=")[1].Split("[")[0].Trim());
-                _FFProcess.WaitForExit();
-                _FilesDict.TryAdd(file.FullName, totalFrames);
+                _ffProcess.StartInfo.Arguments = $"-v error -select_streams v:0 -count_frames -show_entries stream=nb_read_frames \"{file.FullName}\"";
+                _ffProcess.Start();
+                int totalFrames = int.Parse(_ffProcess.StandardOutput.ReadToEnd().Split("=")[1].Split("[")[0].Trim());
+                _ffProcess.WaitForExit();
+                _filesDict.TryAdd(file.FullName, totalFrames);
                 sb.Append(" -- " + totalFrames + Environment.NewLine);
             }
-            _FFProcess.Dispose();
+            _ffProcess.Dispose();
             return sb.ToString();
         }
-        public async Task<(int, string)> RunProfile(string args, string outputDir, string ext, IProgress<double> progress, MainWindowViewModel viewModel, CancellationToken ct, int setStreamReads = 0)
+        public async Task<(int, string)> RunProfile(string args, string outputDir, string ext, IProgress<double> progress, MainWindowViewModel viewModel, CancellationToken ct, bool detachProcess = false)
         {
             //Start out having progress bar show prog of entire dir
             //Progress would be current progress plus the sum of the files already done
-            if (setStreamReads == 0)
-                Trace.TraceInformation("Handling both standard output and standard error");
-            else if (setStreamReads == 1)
-                Trace.TraceInformation("Handling standard output only");
-            else if (setStreamReads == 2)
-                Trace.TraceInformation("Handling standard error only");
-            else if (setStreamReads == 3)
-                Trace.TraceInformation("Handling standard output only with window");
-            else if (setStreamReads == 4)
-                Trace.TraceInformation("Handling standard error only with window");
-            else if (setStreamReads == 5)
-                Trace.TraceInformation("Handling neither standard output nor standard error");
-            else if (setStreamReads == 6)
-                Trace.TraceInformation("Handling neither standard output nor standard error with window");
-            else if (setStreamReads == 7)
-                Trace.TraceInformation("Handling both standard output and standard error lbl");
-            else
-                return (-7, "SetStreamReadersFF value in settings can only be set a value in the range of 0-6");
-            _ViewModel = viewModel;
-            _UIProgress = progress;
+            _viewModel = viewModel;
+            _uIProgress = progress;
             Trace.TraceInformation($"Starting transcode to {outputDir}");
-            foreach (var filePath in _FilesDict.Keys)
+            foreach (var filePath in _filesDict.Keys)
             {
-                NewFFProcess(setStreamReads);
-                if (setStreamReads == 0 || setStreamReads == 1 || setStreamReads == 3)
+                if (detachProcess)
+                    Trace.TraceInformation("Creating detached ffmpeg process");
+                else
+                    Trace.TraceInformation("Creating attached ffmpeg process");
+                NewFFProcess(detachProcess);
+                if (!detachProcess)
                 {
-                    _FFProcess.OutputDataReceived += new DataReceivedEventHandler(StdOutHandler);
+                    _ffProcess.OutputDataReceived += new DataReceivedEventHandler(StdOutHandler);
                 }
-                if (setStreamReads == 7)
+                if (ct.IsCancellationRequested)
                 {
-                    if (File.Exists(filePath))
+                    if (detachProcess)
                     {
-                        await Dispatcher.UIThread.InvokeAsync(async () =>
-                        {
-                            var msgBox = AvaloniaMessageBox.MessageBox.GetMessageBox(new AvaloniaMessageBox.MessageBoxParams
-                            {
-                                Buttons = AvaloniaMessageBox.MessageBoxButtons.YesNo,
-                                Title = "File already exists",
-                                Message = filePath + " already exists would you like to overwrite?"
-                            });
-                            var app = (IClassicDesktopStyleApplicationLifetime)Application.Current!.ApplicationLifetime!;
-                            var result = await msgBox.ShowDialog(app.MainWindow);
-                            if (result == AvaloniaMessageBox.MessageBoxResult.Yes)
-                            {
-                                await _FFProcess.StandardInput.WriteLineAsync("y");
-                            }
-                            else
-                            {
-                                _SkipFile = true;
-                                await _FFProcess.StandardInput.WriteLineAsync("n");
-                            }
-                        }, DispatcherPriority.MaxValue);
+                        _ffProcess.Kill();
+                        await _ffProcess.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(5));
                     }
-                    if (_SkipFile) { _SkipFile = false; goto SkipFile; }
-                    _FFProcess.OutputDataReceived += new DataReceivedEventHandler(StdOutHandler);
-                    _FFProcess.ErrorDataReceived += (object sendingProcess, DataReceivedEventArgs e) => { if (e.Data != null) Trace.TraceInformation("STDERR**--" + e.Data); };
-                }
-                if (CancelQ)
-                {
-                    if (setStreamReads == 5 || setStreamReads == 6)
-                        _FFProcess.Kill();
-                    _FFProcess.Dispose();
-                    //CancelQ = false;
+                    _ffProcess.Dispose();
                     Trace.TraceInformation($"Canceled on {filePath}");
                     return (-1, filePath);
                 }
-                _FFProcess.StartMpeg($"-i \"{filePath}\" -progress pipe:1 {args} \"{Path.Combine(outputDir, Path.GetFileNameWithoutExtension(filePath) + ext)}\"");
-                if (setStreamReads == 0)
-                {
-                    _FFProcess.BeginOutputReadLine();
-                    await ReadStdErr();
-                }
-                else if (setStreamReads == 1 || setStreamReads == 3)
-                {
-                    _FFProcess.BeginOutputReadLine();
-                    try
-                    {
-                        await _FFProcess.WaitForExitAsync(ct);
-                    }
-                    catch (TaskCanceledException ex)
-                    {
-                        Debug.WriteLine(ex.ToString());
-                        await _FFProcess.WaitForExitAsync();
-                        //return (-1, filePath);
-                    }
-                }
-                else if (setStreamReads == 2 || setStreamReads == 4)
-                {
-                    await ReadStdErr();
-                }
-                else if (setStreamReads == 7)
-                {
-                    _FFProcess.BeginOutputReadLine();
-                    _FFProcess.BeginErrorReadLine();
-                    await _FFProcess.WaitForExitAsync();
-                }
-                else
+                _ffProcess.StartMpeg($"-i \"{filePath}\" -progress pipe:1 {args} \"{Path.Combine(outputDir, Path.GetFileNameWithoutExtension(filePath) + ext)}\"");
+                if (detachProcess)
                 {
                     try
                     {
-                        await _FFProcess.WaitForExitAsync(ct);
+                        await _ffProcess.WaitForExitAsync(ct);
                     }
                     catch (TaskCanceledException)
                     {
-                        _FFProcess.Kill();
-                        await _FFProcess.WaitForExitAsync();
-                        //return (-1, filePath);
+                        _ffProcess.Kill();
+                        await _ffProcess.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(5));
                     }
                 }
-                Trace.TraceInformation("Process Exit Code: " + _FFProcess.ExitCode);
-                if (CancelQ)
+                else
                 {
-                    _FFProcess.Dispose();
-                    //CancelQ = false;
+                    _ffProcess.BeginOutputReadLine();
+                    try
+                    {
+                        await ReadStdErr(ct); 
+                    }
+                    catch (TaskCanceledException taskCanceledExc)
+                    {
+                        QueueCanceled = true;
+                        await _ffProcess.StandardInput.WriteAsync('q');
+                        try
+                        {
+                            await _ffProcess.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(5)); 
+                        }
+                        catch (TimeoutException timeOutExc)
+                        {
+                            _ffProcess.Kill();
+                            await _ffProcess.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(5));
+                            _ffProcess.Dispose();
+                            Trace.TraceError(timeOutExc.ToString());
+                            return (-32, timeOutExc.ToString());
+                        }
+                        catch (Exception excInner)
+                        {
+                            _ffProcess.Kill();
+                            await _ffProcess.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(5));
+                            _ffProcess.Dispose();
+                            Trace.TraceError(excInner.ToString());
+                            return (-33, excInner.ToString());
+                        }
+                        Trace.TraceInformation(taskCanceledExc.ToString());
+                    }
+                    catch (Exception exc)
+                    {
+                        _ffProcess.Kill();
+                        _ffProcess.Dispose();
+                        Trace.TraceError(exc.ToString());
+                        return (-31, exc.ToString());
+                    }
+                }
+                Trace.TraceInformation("Process Exit Code: " + _ffProcess.ExitCode);
+                if (ct.IsCancellationRequested)
+                {
+                    if (detachProcess)
+                    {
+                        _ffProcess.Kill();
+                        await _ffProcess.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(5));
+                    }
+                    _ffProcess.Dispose();
                     Trace.TraceInformation($"Canceled on {filePath}");
                     return (-1, filePath);
                 }
-                if (_SkipFile)
+                if (_skipFile)
                 {
-                    _SkipFile = false;
+                    _skipFile = false;
                 }
-                else if (_FFProcess.ExitCode != 0)
+                else if (_ffProcess.ExitCode != 0)
                 {
-                    int exitCode = _FFProcess.ExitCode;
-                    _FFProcess.Dispose();
+                    int exitCode = _ffProcess.ExitCode;
+                    _ffProcess.Dispose();
                     Trace.TraceInformation($"Exited with code {exitCode} on {filePath}");
-                    return (exitCode, _LastStdErrLine);
+                    return (exitCode, _lastStdErrLine);
                 }
-                SkipFile:
-                _TotalPrevFrameProgress += _FilesDict[filePath];
-                lock (_DisposeLock)
+                _totalPrevFrameProgress += _filesDict[filePath];
+                lock (_disposeLock)
                 {
-                    _FFProcess.Dispose();
+                    _ffProcess.Dispose();
                 }
                 Trace.TraceInformation($"File transcode, \"{filePath}\", complete");
             }
-            if (setStreamReads != 0 && setStreamReads != 1 && setStreamReads != 3)
+            if (detachProcess)
             {
-                _UIProgress.Report(1);
+                _uIProgress.Report(1);
             }
             return (0, String.Empty);
         }
@@ -368,26 +293,11 @@ namespace FFmpegAvalonia.TaskTypes
         {
             throw new NotImplementedException();
         }
-        public async Task<(int, string)> TrimDir(ObservableCollection<TrimData> trimData, string sourceDir, string outputDir, IProgress<double> progress, ListViewData item, MainWindowViewModel viewModel, CancellationToken ct, int setStreamReads = 0)
+        public async Task<(int, string)> TrimDir(ObservableCollection<TrimData> trimData, string sourceDir, string outputDir, IProgress<double> progress, ListViewData item, MainWindowViewModel viewModel, CancellationToken ct, bool detachProcess = false)
         {
-            if (setStreamReads == 0)
-                Trace.TraceInformation("Handling both standard output and standard error");
-            else if (setStreamReads == 1)
-                Trace.TraceInformation("Handling standard output only");
-            else if (setStreamReads == 2)
-                Trace.TraceInformation("Handling standard error only");
-            else if (setStreamReads == 3)
-                Trace.TraceInformation("Handling standard output only with window");
-            else if (setStreamReads == 4)
-                Trace.TraceInformation("Handling standard error only with window");
-            else if (setStreamReads == 5)
-                Trace.TraceInformation("Handling neither standard output nor standard error");
-            else if (setStreamReads == 6)
-                Trace.TraceInformation("Handling neither standard output nor standard error with window");
-            else
-                return (-7, "SetStreamReadersFF value in settings can only be set a value in the range of 0-6");
-            _UIProgress = progress;
-            _ViewModel = viewModel;
+            _uIProgress = progress;
+            _viewModel = viewModel;
+            bool overwrite = outputDir == String.Empty || sourceDir == outputDir;
             var trimDataValidTimeCodes = trimData.Where(x => x.StartTime is not null && x.EndTime is not null);
             await Dispatcher.UIThread.InvokeAsync(() =>
             {
@@ -395,221 +305,135 @@ namespace FFmpegAvalonia.TaskTypes
                 item.Label = $"{item.Name} ({item.Description.CurrentFileNumber}/{item.Description.FileCount})";
             });
             Trace.TraceInformation($"Starting trim to {outputDir} from {sourceDir}");
-            if (outputDir == string.Empty || sourceDir == outputDir)
+            foreach (TrimData data in trimDataValidTimeCodes)
             {
-                foreach (TrimData data in trimDataValidTimeCodes)
+                _endTime = (double)data.EndTime!.Value * 1000;
+                if (detachProcess)
+                    Trace.TraceInformation("Creating detached ffmpeg process");
+                else
+                    Trace.TraceInformation("Creating attached ffmpeg process");
+                NewFFProcess(detachProcess);
+                if (!detachProcess)
                 {
-                    _EndTime = (double)data.EndTime!.Value * 1000;
-                    NewFFProcess(setStreamReads);
-                    if (setStreamReads == 0 || setStreamReads == 1 || setStreamReads == 3)
-                    {
-                        _FFProcess.OutputDataReceived += new DataReceivedEventHandler(TrimStdOutHandler); 
-                    }
-                    if (CancelQ)
-                    {
-                        if (setStreamReads == 5 || setStreamReads == 6)
-                            _FFProcess.Kill();
-                        _FFProcess.Dispose();
-                        //CancelQ = false;
-                        Trace.TraceInformation($"Canceled on {data.FileInfo.FullName}");
-                        return (-1, data.FileInfo.FullName);
-                    }
-                    string newFile = Path.Combine(data.FileInfo.Directory.FullName, $"_{data.FileInfo.Name}");
-                    _FFProcess.StartMpeg($"-progress pipe:1 -ss {data.StartTime!.FormattedString} -to {data.EndTime.FormattedString} -i \"{data.FileInfo.FullName}\" -map 0 -codec copy \"{newFile}\"");
-                    if (setStreamReads == 0)
-                    {
-                        _FFProcess.BeginOutputReadLine();
-                        await ReadStdErr();
-                        //await _FFProcess.WaitForExitAsync();
-                    }
-                    else if (setStreamReads == 1 || setStreamReads == 3)
-                    {
-                        _FFProcess.BeginOutputReadLine();
-                        try
-                        {
-                            await _FFProcess.WaitForExitAsync(ct);
-                        }
-                        catch (TaskCanceledException)
-                        {
-                            await _FFProcess.WaitForExitAsync();
-                        }
-                    }
-                    else if (setStreamReads == 2 || setStreamReads == 4)
-                    {
-                        await ReadStdErr();
-                        //await _FFProcess.WaitForExitAsync();
-                    }
-                    else
-                    {
-                        try
-                        {
-                            await _FFProcess.WaitForExitAsync(ct);
-                        }
-                        catch (TaskCanceledException)
-                        {
-                            _FFProcess.Kill();
-                            await _FFProcess.WaitForExitAsync();
-                        }
-                    }
-                    Trace.TraceInformation("Process Exit Code: " + _FFProcess.ExitCode);
-                    if (CancelQ)
-                    {
-                        if (setStreamReads == 5 || setStreamReads == 6)
-                            _FFProcess.Kill();
-                        _FFProcess.Dispose();
-                        //CancelQ = false;
-                        Trace.TraceInformation($"Canceled on {data.FileInfo.FullName}");
-                        return (-1, data.FileInfo.FullName);
-                    }
-                    if (_SkipFile)
-                    {
-                        _SkipFile = false;
-                    }
-                    else if (_FFProcess.ExitCode == 0)
-                    {
-                        string rename = data.FileInfo.FullName;
-                        data.FileInfo.Delete();
-                        File.Move(newFile, rename);
-                    }
-                    else
-                    {
-                        int exitCode = _FFProcess.ExitCode;
-                        lock (_DisposeLock)
-                        {
-                            _FFProcess.Dispose();
-                        }
-                        Trace.TraceInformation($"Exited with code {exitCode} on {data.FileInfo.FullName}");
-                        return (exitCode, _LastStdErrLine);
-                    }
-                    lock (_DisposeLock)
-                    {
-                        _FFProcess.Dispose();
-                    }
-                    await Dispatcher.UIThread.InvokeAsync(() =>
-                    {
-                        item.Label = $"{item.Name} ({++item.Description.CurrentFileNumber}/{item.Description.FileCount})";
-                    });
-                    Trace.TraceInformation($"File trim, \"{data.FileInfo.FullName}\", complete");
+                    _ffProcess.OutputDataReceived += new DataReceivedEventHandler(TrimStdOutHandler); 
                 }
-                return (0, String.Empty);
+                if (ct.IsCancellationRequested)
+                {
+                    if (detachProcess)
+                    {
+                        _ffProcess.Kill();
+                        await _ffProcess.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(5));
+                    }
+                    _ffProcess.Dispose();
+                    Trace.TraceInformation($"Canceled on {data.FileInfo.FullName}");
+                    return (-1, data.FileInfo.FullName);
+                }
+                string newFile;
+                if (overwrite)
+                {
+                    newFile = Path.Combine(data.FileInfo.Directory.FullName, $"_{data.FileInfo.Name}");
+                }
+                else
+                {
+                    newFile = Path.Combine(outputDir, data.FileInfo.Name);
+                }
+                _ffProcess.StartMpeg($"-progress pipe:1 -ss {data.StartTime!.FormattedString} -to {data.EndTime.FormattedString} -i \"{data.FileInfo.FullName}\" -map 0 -codec copy \"{newFile}\"");
+                if (detachProcess)
+                {
+                    try
+                    {
+                        await _ffProcess.WaitForExitAsync(ct);
+                    }
+                    catch (TaskCanceledException)
+                    {
+                        _ffProcess.Kill();
+                        await _ffProcess.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(5));
+                    }
+                }
+                else
+                {
+                    _ffProcess.BeginOutputReadLine();
+                    try
+                    {
+                        await ReadStdErr(ct); 
+                    }
+                    catch (TaskCanceledException taskCanceledExc)
+                    {
+                        QueueCanceled = true;
+                        await _ffProcess.StandardInput.WriteAsync('q');
+                        try
+                        {
+                            await _ffProcess.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(5));
+                        }
+                        catch (TimeoutException timeOutExc)
+                        {
+                            _ffProcess.Kill();
+                            await _ffProcess.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(5));
+                            _ffProcess.Dispose();
+                            Trace.TraceError(timeOutExc.ToString());
+                            return (-32, timeOutExc.ToString());
+                        }
+                        catch (Exception excInner)
+                        {
+                            _ffProcess.Kill();
+                            await _ffProcess.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(5));
+                            _ffProcess.Dispose();
+                            Trace.TraceError(excInner.ToString());
+                            return (-33, excInner.ToString());
+                        }
+                        Trace.TraceInformation(taskCanceledExc.ToString());
+                    }
+                    catch (Exception exc)
+                    {
+                        _ffProcess.Kill();
+                        _ffProcess.Dispose();
+                        Trace.TraceError(exc.ToString());
+                        return (-31, exc.ToString());
+                    }
+                }
+                Trace.TraceInformation("Process Exit Code: " + _ffProcess.ExitCode);
+                if (ct.IsCancellationRequested)
+                {
+                    if (detachProcess)
+                    {
+                        _ffProcess.Kill();
+                        await _ffProcess.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(5));
+                    }
+                    _ffProcess.Dispose();
+                    Trace.TraceInformation($"Canceled on {data.FileInfo.FullName}");
+                    return (-1, data.FileInfo.FullName);
+                }
+                if (_skipFile)
+                {
+                    _skipFile = false;
+                }
+                else if (_ffProcess.ExitCode == 0 && overwrite)
+                {
+                    string rename = data.FileInfo.FullName;
+                    data.FileInfo.Delete();
+                    File.Move(newFile, rename);
+                }
+                else if (_ffProcess.ExitCode != 0)
+                {
+                    int exitCode = _ffProcess.ExitCode;
+                    lock (_disposeLock)
+                    {
+                        _ffProcess.Dispose();
+                    }
+                    Trace.TraceInformation($"Exited with code {exitCode} on {data.FileInfo.FullName}");
+                    return (exitCode, _lastStdErrLine);
+                }
+                lock (_disposeLock)
+                {
+                    _ffProcess.Dispose();
+                }
+                await Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    item.Label = $"{item.Name} ({++item.Description.CurrentFileNumber}/{item.Description.FileCount})";
+                });
+                Trace.TraceInformation($"File trim, \"{data.FileInfo.FullName}\", complete");
             }
-            else
-            {
-                foreach (TrimData data in trimDataValidTimeCodes)
-                {
-                    _EndTime = (double)data.EndTime!.Value * 1000;
-                    NewFFProcess(setStreamReads);
-                    if (setStreamReads == 0 || setStreamReads == 1 || setStreamReads == 3)
-                    {
-                        _FFProcess.OutputDataReceived += new DataReceivedEventHandler(TrimStdOutHandler);
-                    }
-                    if (CancelQ)
-                    {
-                        if (setStreamReads == 5 || setStreamReads == 6)
-                            _FFProcess.Kill();
-                        _FFProcess.Dispose();
-                        //CancelQ = false;
-                        Trace.TraceInformation($"Canceled on {data.FileInfo.FullName}");
-                        return (-1, data.FileInfo.FullName);
-                    }
-                    string newFile = Path.Combine(outputDir, data.FileInfo.Name);
-                    _FFProcess.StartMpeg($"-progress pipe:1 -ss {data.StartTime!.FormattedString} -to {data.EndTime.FormattedString} -i \"{data.FileInfo.FullName}\" -map 0 -codec copy \"{newFile}\"");
-                    if (setStreamReads == 0)
-                    {
-                        _FFProcess.BeginOutputReadLine();
-                        await ReadStdErr();
-                        //await _FFProcess.WaitForExitAsync();
-                    }
-                    else if (setStreamReads == 1 || setStreamReads == 3)
-                    {
-                        _FFProcess.BeginOutputReadLine();
-                        try
-                        {
-                            await _FFProcess.WaitForExitAsync(ct);
-                        }
-                        catch (TaskCanceledException)
-                        {
-                            await _FFProcess.WaitForExitAsync();
-                        }
-                    }
-                    else if (setStreamReads == 2 || setStreamReads == 4)
-                    {
-                        await ReadStdErr();
-                        //await _FFProcess.WaitForExitAsync();
-                    }
-                    else
-                    {
-                        try
-                        {
-                            await _FFProcess.WaitForExitAsync(ct);
-                        }
-                        catch (TaskCanceledException)
-                        {
-                            _FFProcess.Kill();
-                            await _FFProcess.WaitForExitAsync();
-                        }
-                    }
-                    Trace.TraceInformation("Process Exit Code: " + _FFProcess.ExitCode);
-                    if (CancelQ)
-                    {
-                        if (setStreamReads == 5 || setStreamReads == 6)
-                            _FFProcess.Kill();
-                        _FFProcess.Dispose();
-                        //CancelQ = false;
-                        Trace.TraceInformation($"Canceled on {data.FileInfo.FullName}");
-                        return (-1, data.FileInfo.FullName);
-                    }
-                    if (_SkipFile)
-                    {
-                        _SkipFile = false;
-                    }
-                    else if (_FFProcess.ExitCode != 0)
-                    {
-                        int exitCode = _FFProcess.ExitCode;
-                        lock (_DisposeLock)
-                        {
-                            _FFProcess.Dispose();
-                        }
-                        Trace.TraceInformation($"Exited with code {exitCode} on {data.FileInfo.FullName}");
-                        return (exitCode, _LastStdErrLine);
-                    }
-                    lock (_DisposeLock)
-                    {
-                        _FFProcess.Dispose();
-                    }
-                    await Dispatcher.UIThread.InvokeAsync(() =>
-                    {
-                        item.Label = $"{item.Name} ({++item.Description.CurrentFileNumber}/{item.Description.FileCount})";
-                    });
-                    Trace.TraceInformation($"File trim, \"{data.FileInfo.FullName}\", complete");
-                }
-                if (setStreamReads != 0 && setStreamReads != 1 && setStreamReads != 3)
-                {
-                    _UIProgress.Report(1);
-                }
-                return (0, String.Empty);
-            }
-        }
-        public void Stop()
-        {
-            Trace.TraceInformation($"CancelQ (acquire) = {CancelQ}");
-            lock (_DisposeLock)
-            {
-                try
-                {
-                    //_FFProcess.Refresh();
-                    if (!_FFProcess.HasExited)
-                    {
-                        CancelQ = true;
-                        _FFProcess.StandardInput.Write("q");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Trace.TraceError(ex.ToString());
-                }
-            }
-            Trace.TraceInformation($"CancelQ (release) = {CancelQ}");
+            return (0, String.Empty);
         }
         public static bool CheckFFmpegExecutable(string location)
         {
@@ -659,29 +483,29 @@ namespace FFmpegAvalonia.TaskTypes
                 return false;
             }
         }
-        private async Task ReadStdErr()
+        private async Task ReadStdErr(CancellationToken ct)
         {
-            var sr = _FFProcess.StandardError;
+            var sr = _ffProcess.StandardError;
             var sb = new StringBuilder();
             char[] buffer = new char[1];
-            while ((await sr.ReadAsync(buffer, 0, 1)) > 0)
+            while ((await sr.ReadAsync(buffer, 0, 1).WaitAsync(ct)) > 0)
             {
                 sb.Append(buffer[0]);
                 if (buffer[0] == '\n')
                 {
-                    _LastStdErrLine = sb.ToStringTrimEnd(Environment.NewLine);
+                    _lastStdErrLine = sb.ToStringTrimEnd(Environment.NewLine);
                     sb.Clear();
-                    Trace.TraceInformation(_LastStdErrLine);
+                    Trace.TraceInformation("STDERR**--" + _lastStdErrLine);
                 }
                 else if (buffer[0] == ']' && sb[^2] == 'N' && sb[^3] == '/' && sb[^4] == 'y' && sb[^5] == '[') //only N] should be necessary to search for but just in case we search for the whole thing
                 {
                     Trace.TraceInformation("Yes/No prompt found");
                     await sr.ReadAsync(buffer, 0, 1); //This should be space character ' '
                     Debug.WriteLine(buffer[0]);
-                    _LastStdErrLine = sb.ToString();
-                    if (_ViewModel!.AutoOverwriteCheck)
+                    _lastStdErrLine = sb.ToString();
+                    if (_viewModel!.AutoOverwriteCheck)
                     {
-                        await _FFProcess.StandardInput.WriteLineAsync("y");
+                        await _ffProcess.StandardInput.WriteLineAsync("y");
                     }
                     else
                     {
@@ -691,23 +515,23 @@ namespace FFmpegAvalonia.TaskTypes
                             {
                                 Buttons = AvaloniaMessageBox.MessageBoxButtons.YesNo,
                                 Title = "FFmpeg yes/no prompt",
-                                Message = _LastStdErrLine.Replace("[y/N]", "").Trim()
+                                Message = _lastStdErrLine.Replace("[y/N]", "").Trim()
                             });
                             var app = (IClassicDesktopStyleApplicationLifetime)Application.Current!.ApplicationLifetime!;
                             var result = await msgBox.ShowDialog(app.MainWindow);
                             if (result == AvaloniaMessageBox.MessageBoxResult.Yes)
                             {
-                                await _FFProcess.StandardInput.WriteLineAsync("y");
+                                await _ffProcess.StandardInput.WriteLineAsync("y");
                             }
                             else
                             {
-                                _SkipFile = true;
-                                await _FFProcess.StandardInput.WriteLineAsync("n");
+                                _skipFile = true;
+                                await _ffProcess.StandardInput.WriteLineAsync("n");
                             }
                         }, DispatcherPriority.MaxValue);
                     }
                     sb.Clear();
-                    Trace.TraceInformation(_LastStdErrLine);
+                    Trace.TraceInformation("STDERR**--" + _lastStdErrLine);
                 }
             }
         }
@@ -718,16 +542,16 @@ namespace FFmpegAvalonia.TaskTypes
                 Trace.TraceInformation("STDOUT**--" + e.Data);
                 if (e.Data.Contains("frame="))
                 {
-                    _LastFrame = int.Parse(e.Data.Split("=")[1].Trim());
-                    Trace.TraceInformation($"Progress: {_LastFrame} frames finished (file)");
-                    double progress = ((double)_LastFrame + _TotalPrevFrameProgress) / _TotalDirFrames;
+                    _lastFrame = int.Parse(e.Data.Split("=")[1].Trim());
+                    Trace.TraceInformation($"Progress: {_lastFrame} frames finished (file)");
+                    double progress = ((double)_lastFrame + _totalPrevFrameProgress) / _totalDirFrames;
                     Trace.TraceInformation($"Progress: {progress} percentage frames finished (directory)");
-                    _UIProgress!.Report(((double)_LastFrame + _TotalPrevFrameProgress) / _TotalDirFrames);
+                    _uIProgress!.Report(((double)_lastFrame + _totalPrevFrameProgress) / _totalDirFrames);
                 }
-                else if (e.Data.Contains("progress=end") && !CancelQ)
+                else if (e.Data.Contains("progress=end") && !QueueCanceled)
                 {
                     Trace.TraceInformation("File completed");
-                    _UIProgress!.Report(1);
+                    _uIProgress!.Report(1);
                 }
             }
         }
@@ -739,13 +563,13 @@ namespace FFmpegAvalonia.TaskTypes
                 if (e.Data.Contains("out_time="))
                 {
                     double currentTime = double.Parse(e.Data.Split("=")[1].Replace(":", "").Replace(".", ""));
-                    Trace.TraceInformation($"Progress: {currentTime} (current time) / {_EndTime} (end time)");
-                    _UIProgress!.Report(currentTime / _EndTime);
+                    Trace.TraceInformation($"Progress: {currentTime} (current time) / {_endTime} (end time)");
+                    _uIProgress!.Report(currentTime / _endTime);
                 }
-                else if (e.Data.Contains("progress=end") && !CancelQ)
+                else if (e.Data.Contains("progress=end") && !QueueCanceled)
                 {
                     Trace.TraceInformation("File completed");
-                    _UIProgress!.Report(1);
+                    _uIProgress!.Report(1);
                 }
             }
         }

@@ -420,7 +420,7 @@ namespace FFmpegAvalonia.ViewModels
                         progress: new Progress<double>(x => item.Progress = x),
                         viewModel: this,
                         ct: ct,
-                        setStreamReads: AppSettings.Settings.SetStreamReadersFF
+                        detachProcess: AppSettings.Settings.DetachFFmpegProcess
                     );
                 }
                 else if (item.Description.Task == ItemTask.Copy)
@@ -448,7 +448,7 @@ namespace FFmpegAvalonia.ViewModels
                         item: item,
                         viewModel: this,
                         ct: ct,
-                        setStreamReads: AppSettings.Settings.SetStreamReadersFF
+                        detachProcess: AppSettings.Settings.DetachFFmpegProcess
                     );
                 }
                 else if (item.Description.Task == ItemTask.UploadAWS)
@@ -505,30 +505,9 @@ namespace FFmpegAvalonia.ViewModels
         }
         private void StopQueue()
         {
-            Trace.TraceInformation("Stopping queue");
+            Trace.TraceInformation("Stopping queue...");
             Trace.TraceInformation("CurrentItemInProgress is null: " + (CurrentItemInProgress == null).ToString());
             Trace.TraceInformation("CurrentItemInProgress Task: " + CurrentItemInProgress?.Description.Task.ToString());
-            if (CurrentItemInProgress?.Description.Task == ItemTask.Transcode || CurrentItemInProgress?.Description.Task == ItemTask.Trim)
-            {
-                if (FFmp != null)
-                {
-                    FFmp.Stop();
-                }
-                else
-                {
-                    Trace.TraceInformation("FFmp seems to be null");
-                    ShowMessageBox.Handle(new MessageBoxParams
-                    {
-                        Title = "Error",
-                        Message = "There does not appear to be an FFmpeg instance running",
-                        Buttons = MessageBoxButtons.Ok
-                    });
-                }
-            }
-            else
-            {
-                Trace.TraceInformation("Using cancellation token");
-            }
         }
         private async Task Editor(string controlName)
         {
@@ -698,10 +677,10 @@ namespace FFmpegAvalonia.ViewModels
                 app.Shutdown();
                 return;
             }
-            Trace.TraceInformation("Stopping FFmpeg process if running...");
-            FFmp?.Stop();
-            Trace.TraceInformation("Stopping copier instance if running...");
-            Copier?.Stop();
+            if (IsQueueRunning)
+            {
+                Task.Run(async () => { await StopQueueCommand.Execute(); }).Wait();
+            }
             Trace.TraceInformation("Saving settings...");
             AppSettings.Settings.AutoOverwriteCheck = AutoOverwriteCheck;
             AppSettings.Save();

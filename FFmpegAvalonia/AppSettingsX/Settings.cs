@@ -7,5 +7,5 @@ internal class Settings : PropertyReflection
     public string UpdateTarget { get; set; } = "release";
     public bool CheckUpdateOnStart { get; set; } = true;
     public bool AutoOverwriteCheck { get; set; }
-    public int SetStreamReadersFF { get; set; } = 0;
+    public bool DetachFFmpegProcess { get; set; } = false;
 }
