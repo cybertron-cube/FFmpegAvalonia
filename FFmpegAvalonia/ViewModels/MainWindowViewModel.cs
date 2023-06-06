@@ -433,7 +433,8 @@ namespace FFmpegAvalonia.ViewModels
                     response = await Copier.CopyDirectory(
                         sourceDir: item.Description.SourceDir,
                         outputDir: item.Description.OutputDir,
-                        ext: '*' + item.Description.FileExt
+                        ext: '*' + item.Description.FileExt,
+                        ct: ct
                     );
                 }
                 else if (item.Description.Task == ItemTask.Trim)
@@ -520,23 +521,6 @@ namespace FFmpegAvalonia.ViewModels
                     {
                         Title = "Error",
                         Message = "There does not appear to be an FFmpeg instance running",
-                        Buttons = MessageBoxButtons.Ok
-                    });
-                }
-            }
-            else if (CurrentItemInProgress?.Description.Task == ItemTask.Copy)
-            {
-                if (Copier != null)
-                {
-                    Copier.Stop();
-                }
-                else
-                {
-                    Trace.TraceInformation("Copier seems to be null");
-                    ShowMessageBox.Handle(new MessageBoxParams
-                    {
-                        Title = "Error",
-                        Message = "There does not appear to be an copier instance running",
                         Buttons = MessageBoxButtons.Ok
                     });
                 }

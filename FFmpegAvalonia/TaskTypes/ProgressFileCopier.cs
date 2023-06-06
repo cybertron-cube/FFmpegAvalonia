@@ -16,42 +16,35 @@ namespace FFmpegAvalonia.TaskTypes
 
     public class ProgressFileCopier
     {
-        private string SourceFilePath = string.Empty;
-        private string OutputFilePath = string.Empty;
-        //private int Total;
-        private readonly IProgress<double> _UIProgress;
-        private readonly ListViewData _Item;
-        private readonly MainWindowViewModel _ViewModel;
+        private string _sourceFilePath = String.Empty;
+        private string _outputFilePath = String.Empty;
+        private readonly IProgress<double> _uIProgress;
+        private readonly ListViewData _item;
+        private readonly MainWindowViewModel _viewModel;
         public event ProgressChangeDelegate OnProgressChanged;
         public event Completedelegate OnComplete;
-        private long _CancelFlag;
-        public bool CancelFlag
-        {
-            get => Interlocked.Read(ref _CancelFlag) == 1;
-            set => Interlocked.Exchange(ref _CancelFlag, Convert.ToInt64(value));
-        }
 
         public ProgressFileCopier(IProgress<double> progress, ListViewData item, MainWindowViewModel viewModel)
         {
-            _UIProgress = progress;
-            _Item = item;
-            _ViewModel = viewModel;
+            _uIProgress = progress;
+            _item = item;
+            _viewModel = viewModel;
 
             OnProgressChanged += delegate { };
             OnComplete += delegate { };
         }
         public void CopyFile(string sourceFilePath, string outputFilePath) //change this to match the override below
         {
-            SourceFilePath = sourceFilePath;
-            OutputFilePath = outputFilePath;
+            _sourceFilePath = sourceFilePath;
+            _outputFilePath = outputFilePath;
 
             byte[] buffer = new byte[1024 * 1024]; // 1MB buffer
             bool cancelFlag = false;
 
-            using (FileStream source = new FileStream(SourceFilePath, FileMode.Open, FileAccess.Read))
+            using (FileStream source = new FileStream(_sourceFilePath, FileMode.Open, FileAccess.Read))
             {
                 long fileLength = source.Length;
-                using (FileStream dest = new FileStream(OutputFilePath, FileMode.CreateNew, FileAccess.Write))
+                using (FileStream dest = new FileStream(_outputFilePath, FileMode.CreateNew, FileAccess.Write))
                 {
                     long totalBytes = 0;
                     int currentBlockSize = 0;
@@ -77,14 +70,14 @@ namespace FFmpegAvalonia.TaskTypes
 
             OnComplete();
         }
-        private void CopyFile()
+        private void CopyFile(CancellationToken ct)
         {
             byte[] buffer = new byte[1024 * 1024]; // 1MB buffer
 
-            using (FileStream source = new(SourceFilePath, FileMode.Open, FileAccess.Read))
+            using (FileStream source = new(_sourceFilePath, FileMode.Open, FileAccess.Read))
             {
                 long fileLength = source.Length;
-                using (FileStream dest = new(OutputFilePath, FileMode.CreateNew, FileAccess.Write))
+                using (FileStream dest = new(_outputFilePath, FileMode.CreateNew, FileAccess.Write))
                 {
                     long totalBytes = 0;
                     int currentBlockSize = 0;
@@ -95,7 +88,7 @@ namespace FFmpegAvalonia.TaskTypes
                         double percentage = (double)totalBytes / fileLength;
                         dest.Write(buffer, 0, currentBlockSize);
                         OnProgressChanged(percentage);
-                        if (CancelFlag)
+                        if (ct.IsCancellationRequested)
                         {
                             return;
                         }
@@ -104,7 +97,7 @@ namespace FFmpegAvalonia.TaskTypes
             }
             OnComplete();
         }
-        public async Task<(int, string)> CopyDirectory(string sourceDir, string outputDir, string ext)
+        public async Task<(int, string)> CopyDirectory(string sourceDir, string outputDir, string ext, CancellationToken ct)
         {
             DirectoryInfo dirInfo = new(sourceDir);
             var files = dirInfo.EnumerateFiles(ext);
@@ -113,14 +106,14 @@ namespace FFmpegAvalonia.TaskTypes
             OnComplete += ProgressFileCopier_OnComplete;
             foreach (FileInfo file in files)
             {
-                _Item.Description.CurrentFileNumber += 1;
-                _Item.Label = $"{_Item.Name} ({_Item.Description.CurrentFileNumber}/{_Item.Description.FileCount})";
-                SourceFilePath = file.FullName;
-                OutputFilePath = Path.Combine(outputDir, file.Name);
-                _Item.Description.CurrentFileName = file.Name;
-                if (File.Exists(OutputFilePath))
+                _item.Description.CurrentFileNumber += 1;
+                _item.Label = $"{_item.Name} ({_item.Description.CurrentFileNumber}/{_item.Description.FileCount})";
+                _sourceFilePath = file.FullName;
+                _outputFilePath = Path.Combine(outputDir, file.Name);
+                _item.Description.CurrentFileName = file.Name;
+                if (File.Exists(_outputFilePath))
                 {
-                    if (!_ViewModel.AutoOverwriteCheck)
+                    if (!_viewModel.AutoOverwriteCheck)
                     {
                         bool overwrite = false;
                         await Dispatcher.UIThread.InvokeAsync(async () =>
@@ -129,14 +122,14 @@ namespace FFmpegAvalonia.TaskTypes
                             {
                                 Buttons = MessageBoxButtons.YesNo,
                                 Title = "Overwrite?",
-                                Message = $"The file \"{OutputFilePath}\" already exists, would you like to overwrite it?"
+                                Message = $"The file \"{_outputFilePath}\" already exists, would you like to overwrite it?"
                             });
                             var app = (IClassicDesktopStyleApplicationLifetime)Application.Current!.ApplicationLifetime!;
                             var result = await msgBox.ShowDialog(app.MainWindow);
                             if (result == MessageBoxResult.Yes)
                             {
                                 overwrite = true;
-                                File.Delete(OutputFilePath);
+                                File.Delete(_outputFilePath);
                             }
                             else
                             {
@@ -150,29 +143,25 @@ namespace FFmpegAvalonia.TaskTypes
                     }
                     else
                     {
-                        File.Delete(OutputFilePath);
+                        File.Delete(_outputFilePath);
                     }
                 }
-                CopyFile();
-                if (CancelFlag)
+                CopyFile(ct);
+                if (ct.IsCancellationRequested)
                 {
-                    File.Delete(OutputFilePath);
+                    File.Delete(_outputFilePath);
                     return (-1, file.FullName);
                 }
             }
             return (0, String.Empty);
         }
-        public void Stop()
-        {
-            CancelFlag = true;
-        }
         private void ProgressFileCopier_OnComplete()
         {
-            _Item.Label = $"{_Item.Name} ({_Item.Description.CurrentFileNumber}/{_Item.Description.FileCount})";
+            _item.Label = $"{_item.Name} ({_item.Description.CurrentFileNumber}/{_item.Description.FileCount})";
         }
         private void ProgressFileCopier_OnProgressChanged(double Percentage)
         {
-            _UIProgress.Report(Percentage);
+            _uIProgress.Report(Percentage);
         }
     }
 }
