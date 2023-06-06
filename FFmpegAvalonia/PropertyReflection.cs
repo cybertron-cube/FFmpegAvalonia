@@ -1,22 +1,17 @@
-﻿namespace FFmpegAvalonia
+﻿namespace FFmpegAvalonia;
+
+public class PropertyReflection
 {
-    public class PropertyReflection
+    public string GetPropVal(string propertyName)
     {
-        public string GetPropVal(string propertyName)
+        object? val = this.GetType().GetProperty(propertyName).GetValue(this);
+        if (val == null)
         {
-            object? val = this.GetType().GetProperty(propertyName).GetValue(this);
-            if (val is bool bVal)
-            {
-                return bVal.ToString();
-            }
-            else if (val is null)
-            {
-                return "null";
-            }
-            else
-            {
-                return (string)val;
-            }
+            return "null";
+        }
+        else
+        {
+            return val.ToString() == null ? "null" : val.ToString()!;
         }
     }
 }

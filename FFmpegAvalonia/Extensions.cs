@@ -8,12 +8,12 @@ namespace ExtensionMethods
     {
         public static bool EndsWith(this StringBuilder haystack, string needle)
         {
-            var needleLength = needle.Length - 1;
-            var haystackLength = haystack.Length - 1;
-            if (haystackLength == 0)
+            if (haystack.Length == 0 || needle.Length == 0 || needle.Length > haystack.Length)
             {
                 return false;
             }
+            var needleLength = needle.Length - 1;
+            var haystackLength = haystack.Length - 1;
             for (int i = 0; i <= needleLength; i++)
             {
                 if (haystack[haystackLength - i] != needle[needleLength - i])
@@ -25,12 +25,12 @@ namespace ExtensionMethods
         }
         private static bool ContainsOrdinal(this StringBuilder haystack, string needle)
         {
-            int needleIndexLength = needle.Length - 1;
-            int haystackIndexLength = haystack.Length - 1;
             if (haystack.Length == 0 || needle.Length == 0 || needle.Length > haystack.Length)
             {
                 return false;
             }
+            int needleIndexLength = needle.Length - 1;
+            int haystackIndexLength = haystack.Length - 1;
             for (int i = 0; i <= haystackIndexLength && haystack.Length - i >= needleIndexLength; i++)
             {
                 if (haystack[i] == needle[0])
@@ -59,12 +59,12 @@ namespace ExtensionMethods
         }
         private static bool ContainsOrdinalIgnoreCase(this StringBuilder haystack, string needle)
         {
-            int needleIndexLength = needle.Length - 1;
-            int haystackIndexLength = haystack.Length - 1;
             if (haystack.Length == 0 || needle.Length == 0 || needle.Length > haystack.Length)
             {
                 return false;
             }
+            int needleIndexLength = needle.Length - 1;
+            int haystackIndexLength = haystack.Length - 1;
             for (int i = 0; i <= haystackIndexLength && haystack.Length - i >= needleIndexLength; i++)
             {
                 if (char.ToLower(haystack[i]) == needle[0])
@@ -115,15 +115,11 @@ namespace ExtensionMethods
         }
         public static void TrimEnd(this StringBuilder sb, string str)
         {
-            var strIndexLength = str.Length - 1;
-            var sbIndexLength = sb.Length - 1;
-            sb.Remove(sbIndexLength - strIndexLength, str.Length);
+            sb.Remove(sb.Length - str.Length, str.Length);
         }
         public static string ToStringTrimEnd(this StringBuilder sb, string trimEnd)
         {
-            var strIndexLength = trimEnd.Length - 1;
-            var sbIndexLength = sb.Length - 1;
-            return sb.ToString(0, sbIndexLength - strIndexLength);
+            return sb.ToString(0, sb.Length - trimEnd.Length);
         }
         public static bool ParseToBool(this string str)
         {
@@ -143,8 +139,6 @@ namespace ExtensionMethods
             {
                 "true" => true,
                 "false" => false,
-                "1" => true,
-                "0" => false,
                 _ => null,
             };
         }
@@ -163,12 +157,7 @@ namespace ExtensionMethods
         }
         public static string Combine(this string[] stringArray)
         {
-            StringBuilder sb = new();
-            foreach (string str in stringArray)
-            {
-                sb.Append(str);
-            }
-            return sb.ToString();
+            return String.Join("", stringArray);
         }
         public static void Rename(this FileInfo file, string newName)
         {

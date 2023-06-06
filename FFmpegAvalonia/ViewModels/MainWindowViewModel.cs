@@ -325,7 +325,26 @@ namespace FFmpegAvalonia.ViewModels
         }
         private async Task StartQueueAsync(CancellationToken ct)
         {
-            (int, string) response = await Task.Run(() => ProcessTaskItems(ct));
+            (int, string) response;
+            try
+            {
+                response = await Task.Run(() => ProcessTaskItems(ct));
+            }
+            catch (Exception ex)
+            {
+                Trace.TraceError($"An exception occurred in processing items task{Environment.NewLine}" +
+                    $"Exception = \"{ex}\"{Environment.NewLine}" +
+                    $"Task type = \"{CurrentItemInProgress?.Description.Task.ToString()}\"{Environment.NewLine}" +
+                    $"Cancel requested = \"{ct.IsCancellationRequested}\"");
+                await ShowMessageBox.Handle(new MessageBoxParams
+                {
+                    Title = "Exception",
+                    Message = ex.ToString(),
+                    Buttons = MessageBoxButtons.Ok,
+                    StartupLocation = WindowStartupLocation.CenterOwner
+                });
+                return;
+            }
             if (response.Item1 == 0 && !ct.IsCancellationRequested) //Success
             {
                 Trace.TraceInformation("Queue completed");
@@ -399,7 +418,9 @@ namespace FFmpegAvalonia.ViewModels
                         outputDir: item.Description.OutputDir,
                         ext: item.Description.Profile.OutputExtension,
                         progress: new Progress<double>(x => item.Progress = x),
-                        viewModel: this
+                        viewModel: this,
+                        ct: ct,
+                        detachProcess: AppSettings.Settings.DetachFFmpegProcess
                     );
                 }
                 else if (item.Description.Task == ItemTask.Copy)
@@ -412,7 +433,8 @@ namespace FFmpegAvalonia.ViewModels
                     response = await Copier.CopyDirectory(
                         sourceDir: item.Description.SourceDir,
                         outputDir: item.Description.OutputDir,
-                        ext: '*' + item.Description.FileExt
+                        ext: '*' + item.Description.FileExt,
+                        ct: ct
                     );
                 }
                 else if (item.Description.Task == ItemTask.Trim)
@@ -424,7 +446,9 @@ namespace FFmpegAvalonia.ViewModels
                         trimData: item.Description.TrimData!,
                         progress: new Progress<double>(x => item.Progress = x),
                         item: item,
-                        viewModel: this
+                        viewModel: this,
+                        ct: ct,
+                        detachProcess: AppSettings.Settings.DetachFFmpegProcess
                     );
                 }
                 else if (item.Description.Task == ItemTask.UploadAWS)
@@ -481,39 +505,9 @@ namespace FFmpegAvalonia.ViewModels
         }
         private void StopQueue()
         {
-            if (CurrentItemInProgress?.Description.Task == ItemTask.Transcode || CurrentItemInProgress?.Description.Task == ItemTask.Trim)
-            {
-                if (FFmp != null)
-                {
-                    FFmp.Stop();
-                }
-                else
-                {
-                    ShowMessageBox.Handle(new MessageBoxParams
-                    {
-                        Title = "Error",
-                        Message = "There does not appear to be an FFmpeg instance running",
-                        Buttons = MessageBoxButtons.Ok
-                    });
-                }
-            }
-            else if (CurrentItemInProgress?.Description.Task == ItemTask.Copy)
-            {
-                if (Copier != null)
-                {
-                    Copier.Stop();
-                }
-                else
-                {
-                    ShowMessageBox.Handle(new MessageBoxParams
-                    {
-                        Title = "Error",
-                        Message = "There does not appear to be an copier instance running",
-                        Buttons = MessageBoxButtons.Ok
-                    });
-                }
-            }
-            else { }
+            Trace.TraceInformation("Stopping queue...");
+            Trace.TraceInformation("CurrentItemInProgress is null: " + (CurrentItemInProgress == null).ToString());
+            Trace.TraceInformation("CurrentItemInProgress Task: " + CurrentItemInProgress?.Description.Task.ToString());
         }
         private async Task Editor(string controlName)
         {
@@ -550,6 +544,18 @@ namespace FFmpegAvalonia.ViewModels
             else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
             {
                 assetIdentifier = "linux";
+            }
+            else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+            {
+                if (RuntimeInformation.ProcessArchitecture == Architecture.Arm64)
+                {
+                    assetIdentifier = "osx-arm64";
+                }
+                else if (RuntimeInformation.ProcessArchitecture == Architecture.X64)
+                {
+                    assetIdentifier = "osx-x64";
+                }
+                else throw new Exception("OS Platform not supported");
             }
             else throw new Exception("OS Platform not supported");
             Trace.TraceInformation($"Asset Identifier: {assetIdentifier}");
@@ -671,10 +677,10 @@ namespace FFmpegAvalonia.ViewModels
                 app.Shutdown();
                 return;
             }
-            Trace.TraceInformation("Stopping FFmpeg process if running...");
-            FFmp?.Stop();
-            Trace.TraceInformation("Stopping copier instance if running...");
-            Copier?.Stop();
+            if (IsQueueRunning)
+            {
+                Task.Run(async () => { await StopQueueCommand.Execute(); }).Wait();
+            }
             Trace.TraceInformation("Saving settings...");
             AppSettings.Settings.AutoOverwriteCheck = AutoOverwriteCheck;
             AppSettings.Save();
