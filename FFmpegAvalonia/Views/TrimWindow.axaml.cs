@@ -149,58 +149,137 @@ namespace FFmpegAvalonia.Views
         private void TextInputValidation(object? sender, TextInputEventArgs e)
         {
             TextBox textBox = (TextBox)sender!;
-            int textLength = textBox.Text.Count(x => !x.Equals(':') && !x.Equals('.'));
-            if (Int32.TryParse(e.Text, out _))
+            int selectionLength = Math.Abs(textBox.SelectionEnd - textBox.SelectionStart);
+            if (selectionLength == 0)
             {
-                if (textLength > 0 && textLength < 6 && textLength.IsEven() && !textBox.Text.EndsWith(":"))
+                int textLength = textBox.Text.Count(x => !x.Equals(':') && !x.Equals('.'));
+                if (Int32.TryParse(e.Text, out _))
                 {
-                    e.Text = ":" + e.Text;
-                    return;
-                }
-                else if (textLength == 6 && !textBox.Text.EndsWith("."))
-                {
-                    e.Text = "." + e.Text;
-                    return;
-                }
-                else if (textBox.Text.Length == textBox.MaxLength - 1)
-                {
-                    if (textBox.Name == "StartTimeCodeTextBox")
+                    if (textLength > 0 && textLength < 6 && textLength.IsEven() && !textBox.Text.EndsWith(":"))
                     {
-                        EndTimeCodeTextBox.Focus();
-                        EndTimeCodeTextBox.SelectAll();
+                        e.Text = ":" + e.Text;
+                        return;
                     }
-                    else SetTimeCodeBtn.Focus();
-                    return;
+                    else if (textLength == 6 && !textBox.Text.EndsWith("."))
+                    {
+                        e.Text = "." + e.Text;
+                        return;
+                    }
+                    else if (textBox.Text.Length == textBox.MaxLength - 1)
+                    {
+                        if (textBox.Name == "StartTimeCodeTextBox")
+                        {
+                            EndTimeCodeTextBox.Focus();
+                            EndTimeCodeTextBox.SelectAll();
+                        }
+                        else SetTimeCodeBtn.Focus();
+                        return;
+                    }
+                    else return;
                 }
-                else return;
-            }
-            else if (e.Text == ":")
-            {
-                if (textLength > 0 && textLength < 6 && textLength.IsEven() && !textBox.Text.EndsWith(":"))
+                else if (e.Text == ":")
                 {
-                    return;
+                    if (textLength > 0 && textLength < 6 && textLength.IsEven() && !textBox.Text.EndsWith(":"))
+                    {
+                        return;
+                    }
+                    else
+                    {
+                        e.Handled = true;
+                        return;
+                    }
+                }
+                else if (e.Text == ".")
+                {
+                    if (textLength == 6 && !textBox.Text.EndsWith("."))
+                    {
+                        return;
+                    }
+                    else
+                    {
+                        e.Handled = true;
+                        return;
+                    }
                 }
                 else
                 {
                     e.Handled = true;
-                    return;
-                }
-            }
-            else if (e.Text == ".")
-            {
-                if (textLength == 6 && !textBox.Text.EndsWith("."))
-                {
-                    return;
-                }
-                else
-                {
-                    e.Handled = true;
-                    return;
-                }
+                } 
             }
             else
             {
-                e.Handled = true;
+                int selectionStart;
+                int selectionEnd;
+                if (textBox.SelectionStart < textBox.SelectionEnd)
+                {
+                    selectionStart = textBox.SelectionStart;
+                    selectionEnd = textBox.SelectionEnd;
+                }
+                else
+                {
+                    selectionStart = textBox.SelectionEnd;
+                    selectionEnd = textBox.SelectionStart;
+                }
+                string combine = String.Concat(textBox.Text.AsSpan(0, selectionStart), e.Text, textBox.Text.AsSpan(selectionEnd, textBox.Text.Length - selectionEnd));
+                if (combine.Length > TrimWindowViewModel.TextMaxLength)
+                {
+                    e.Handled = true;
+                    return;
+                }
+                string text = String.Join("", combine.Where(x => !x.Equals(':') && !x.Equals('.')));
+                int ti = 0;
+                StringBuilder sb = new(12);
+                for (int i = 0; i < 12; i++)
+                {
+                    if (ti > text.Length - 1)
+                    {
+                        e.Handled = true;
+                        textBox.Text = sb.ToString();
+                        textBox.CaretIndex = textBox.Text.Length;
+                        textBox.ClearSelection();
+                        return;
+                    }
+                    if (sb.Length < 8)
+                    {
+                        if (sb.Length == 2 || sb.Length == 5)
+                        {
+                            sb.Append(':');
+                        }
+                        else
+                        {
+                            if (Int32.TryParse(text[ti].ToString(), out _))
+                            {
+                                sb.Append(text[ti]);
+                                ti++;
+                            }
+                            else
+                            {
+                                e.Handled = true;
+                                return;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        if (sb.Length == 8)
+                        {
+                            sb.Append('.');
+                        }
+                        else
+                        {
+                            if (Int32.TryParse(text[ti].ToString(), out _))
+                            {
+                                sb.Append(text[ti]);
+                                ti++;
+                            }
+                            else
+                            {
+                                e.Handled = true;
+                                return;
+                            }
+                        }
+                    }
+                }
             }
         }
     }
