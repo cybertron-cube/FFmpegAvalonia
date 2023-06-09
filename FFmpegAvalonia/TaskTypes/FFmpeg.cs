@@ -186,7 +186,7 @@ namespace FFmpegAvalonia.TaskTypes
                 NewFFProcess(detachProcess);
                 if (!detachProcess)
                 {
-                    _ffProcess.OutputDataReceived += new DataReceivedEventHandler(StdOutHandler);
+                    _ffProcess.OutputDataReceived += new DataReceivedEventHandler(StdOutHandlerFrameProg);
                 }
                 if (ct.IsCancellationRequested)
                 {
@@ -315,7 +315,7 @@ namespace FFmpegAvalonia.TaskTypes
                 NewFFProcess(detachProcess);
                 if (!detachProcess)
                 {
-                    _ffProcess.OutputDataReceived += new DataReceivedEventHandler(TrimStdOutHandler); 
+                    _ffProcess.OutputDataReceived += new DataReceivedEventHandler(StdOutHandlerTimeProg); 
                 }
                 if (ct.IsCancellationRequested)
                 {
@@ -535,7 +535,7 @@ namespace FFmpegAvalonia.TaskTypes
                 }
             }
         }
-        private void StdOutHandler(object sendingProcess, DataReceivedEventArgs e)
+        private void StdOutHandlerFrameProg(object sendingProcess, DataReceivedEventArgs e)
         {
             if (e.Data != null)
             {
@@ -555,7 +555,7 @@ namespace FFmpegAvalonia.TaskTypes
                 }
             }
         }
-        private void TrimStdOutHandler(object sendingProcess, DataReceivedEventArgs e)
+        private void StdOutHandlerTimeProg(object sendingProcess, DataReceivedEventArgs e)
         {
             if (e.Data != null)
             {
