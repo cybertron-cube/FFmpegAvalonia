@@ -21,6 +21,7 @@ namespace FFmpegAvalonia.TaskTypes
 {
     public class FFmpeg
     {
+        private bool _audioFile = false;
         private FFmpegProcess _ffProcess;
         private readonly string _ffMpegPath;
         private readonly ConcurrentDictionary<string, int> _filesDict;
@@ -78,6 +79,43 @@ namespace FFmpegAvalonia.TaskTypes
                     EnableRaisingEvents = true
                 };
             }
+        }
+        public string SetProgression(string dir, string ext, string args)
+        {
+            if (HashMaps.FileFormats.TryGetValue(ext.ToLower(), out string? type) && type == "audio")
+            {
+                _audioFile = true;
+                return GetDuration(dir, '*' + ext);
+            }
+            else
+            {
+                return GetFrameCountApproximate(dir, '*' + ext, args);
+            }
+        }
+        public string GetDuration(string dir, string searchPattern)
+        {
+            NewFFProcess();
+            var dirInfo = new DirectoryInfo(dir);
+            var files = dirInfo.EnumerateFiles(searchPattern);
+            var sb = new StringBuilder();
+            foreach (var file in files)
+            {
+                sb.Append(file.FullName);
+
+                _ffProcess.StartProbe($"-v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 \"{file.FullName}\"");
+                decimal totalSeconds = decimal.Parse(_ffProcess.StandardOutput.ReadToEnd().Trim());
+                int totalSecondsRound = Convert.ToInt32(totalSeconds);
+
+                Trace.TraceInformation("Total Seconds: " + totalSeconds);
+                _ffProcess.WaitForExit();
+
+                Trace.TraceInformation("Process Exit Code: " + _ffProcess.ExitCode);
+
+                _filesDict.TryAdd(file.FullName, totalSecondsRound);
+                sb.Append(" -- " + totalSecondsRound + Environment.NewLine);
+            }
+            _ffProcess.Dispose();
+            return sb.ToString();
         }
         public string GetFrameCountApproximate(string dir, string searchPattern, string args)
         {
@@ -186,7 +224,15 @@ namespace FFmpegAvalonia.TaskTypes
                 NewFFProcess(detachProcess);
                 if (!detachProcess)
                 {
-                    _ffProcess.OutputDataReceived += new DataReceivedEventHandler(StdOutHandlerFrameProg);
+                    if (_audioFile)
+                    {
+                        _ffProcess.OutputDataReceived += new DataReceivedEventHandler(StdOutHandlerTimeProg);
+                        _endTime = _filesDict[filePath];
+                    }
+                    else
+                    {
+                        _ffProcess.OutputDataReceived += new DataReceivedEventHandler(StdOutHandlerFrameProg);
+                    }
                 }
                 if (ct.IsCancellationRequested)
                 {

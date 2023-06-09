@@ -407,12 +407,12 @@ namespace FFmpegAvalonia.ViewModels
                 if (item.Description.Task == ItemTask.Transcode)
                 {
                     FFmp = new FFmpeg(AppSettings.Settings.FFmpegPath);
-                    string frameResult = FFmp.GetFrameCountApproximate(
+                    string progResult = FFmp.SetProgression(
                         dir: item.Description.SourceDir,
-                        searchPattern: '*' + item.Description.FileExt,
+                        ext: item.Description.FileExt,
                         args: item.Description.Profile.Arguments
                     );
-                    Trace.TraceInformation(frameResult);
+                    Trace.TraceInformation(progResult);
                     response = await FFmp.RunProfile(
                         args: item.Description.Profile.Arguments,
                         outputDir: item.Description.OutputDir,
