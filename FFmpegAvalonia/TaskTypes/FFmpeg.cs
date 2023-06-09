@@ -307,7 +307,7 @@ namespace FFmpegAvalonia.TaskTypes
             Trace.TraceInformation($"Starting trim to {outputDir} from {sourceDir}");
             foreach (TrimData data in trimDataValidTimeCodes)
             {
-                _endTime = (double)data.EndTime!.Value * 1000;
+                _endTime = data.EndTime!.GetTotalSeconds();
                 if (detachProcess)
                     Trace.TraceInformation("Creating detached ffmpeg process");
                 else
@@ -562,7 +562,7 @@ namespace FFmpegAvalonia.TaskTypes
                 Trace.TraceInformation("STDOUT**--" + e.Data);
                 if (e.Data.Contains("out_time="))
                 {
-                    double currentTime = double.Parse(e.Data.Split("=")[1].Replace(":", "").Replace(".", ""));
+                    double currentTime = TimeCode.GetTotalSeconds(e.Data.Split('=')[1].Replace("-", ""));
                     Trace.TraceInformation($"Progress: {currentTime} (current time) / {_endTime} (end time)");
                     _uIProgress!.Report(currentTime / _endTime);
                 }
