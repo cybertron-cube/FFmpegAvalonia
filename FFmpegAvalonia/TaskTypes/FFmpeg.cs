@@ -263,7 +263,8 @@ namespace FFmpegAvalonia.TaskTypes
                     _ffProcess.BeginOutputReadLine();
                     try
                     {
-                        await ReadStdErr(ct); 
+                        await ReadStdErr(ct);
+                        await _ffProcess.WaitForExitAsync();
                     }
                     catch (TaskCanceledException taskCanceledExc)
                     {
@@ -401,7 +402,8 @@ namespace FFmpegAvalonia.TaskTypes
                     _ffProcess.BeginOutputReadLine();
                     try
                     {
-                        await ReadStdErr(ct); 
+                        await ReadStdErr(ct);
+                        await _ffProcess.WaitForExitAsync();
                     }
                     catch (TaskCanceledException taskCanceledExc)
                     {
