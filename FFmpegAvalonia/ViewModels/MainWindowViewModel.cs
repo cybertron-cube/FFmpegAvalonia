@@ -462,14 +462,18 @@ namespace FFmpegAvalonia.ViewModels
                     var hash = new Cybertron.Hashing();
                     hash.OnNextFile += (fileName) =>
                     {
-                        item.Progress = item.Description.CurrentFileNumber++ / (double)item.Description.FileCount;
                         item.Label = $"{fileName} ({item.Description.CurrentFileNumber}/{item.Description.FileCount})";
+                    };
+                    hash.OnCompleteFile += (filename) =>
+                    {
+                        item.Progress = ++item.Description.CurrentFileNumber / (double)item.Description.FileCount;
                     };
                     var hashResponse = await hash.DirectoryHashAsync(item.Description.SourceDir,
                         Path.Combine(item.Description.OutputDir, "hash_list.txt"),
                         $"*{item.Description.FileExt}",
                         Cybertron.Hashing.HashingAlgorithmTypes.MD5,
                         ct);
+                    item.Label = item.Label.Replace($"({item.Description.CurrentFileNumber - 1}/", $"({item.Description.CurrentFileNumber}/");
                     if (hashResponse == "0")
                     {
                         response = (0, String.Empty);
