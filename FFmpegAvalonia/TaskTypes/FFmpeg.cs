@@ -144,8 +144,9 @@ namespace FFmpegAvalonia.TaskTypes
                 if (!skipFrameRateCalc)
                 {
                     _ffProcess.StartProbe($"-v 0 -of csv=p=0 -select_streams v:0 -show_entries stream=r_frame_rate \"{file.FullName}\"");
-                    string output = _ffProcess.StandardOutput.ReadToEnd().Trim();
-                    frameRate = decimal.Parse(output.Split(@"/")[0]) / decimal.Parse(output.Split(@"/")[1]);
+                    string[] outputLines = _ffProcess.StandardOutput.ReadToEnd().Split(Environment.NewLine);
+                    var firstLineFrameRate = outputLines[0].Trim().Split(@"/");
+                    frameRate = decimal.Parse(firstLineFrameRate[0]) / decimal.Parse(firstLineFrameRate[1]);
 
                     Trace.TraceInformation("Framerate: " + frameRate);
                     _ffProcess.WaitForExit();
