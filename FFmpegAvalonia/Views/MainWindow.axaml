@@ -129,8 +129,8 @@
 			<CheckBox Name="AutoOverwriteCheck" Content="Overwrite files if prompted" IsChecked="{Binding Path=AutoOverwriteCheck}" VerticalAlignment="Center" HorizontalAlignment="Left" Margin="50, 0, 0, 15"/>
 		</Grid>
 		
-		<ListView Name="TaskListView" Items="{Binding TaskListItems}" HorizontalAlignment="Stretch" BorderThickness="0" Padding="0" Grid.Column="0" Grid.Row="7" Grid.ColumnSpan="3">
-			<ListView.ItemTemplate>
+		<ListBox Name="TaskListView" Items="{Binding TaskListItems}" HorizontalAlignment="Stretch" BorderThickness="0" Padding="0" Grid.Column="0" Grid.Row="7" Grid.ColumnSpan="3">
+			<ListBox.ItemTemplate>
 				<DataTemplate>
 					<Border Margin="-12, -8, -12, -11" CornerRadius="0" BorderBrush="SkyBlue" Background="{Binding Path=Background}" BorderThickness="2" Padding="8">
 						<Border.ContextMenu>
@@ -164,7 +164,7 @@
 						</DockPanel>
 					</Border>
 				</DataTemplate>
-			</ListView.ItemTemplate>
-		</ListView>
+			</ListBox.ItemTemplate>
+		</ListBox>
 	</Grid>
 </Window>

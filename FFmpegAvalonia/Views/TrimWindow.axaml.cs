@@ -3,7 +3,6 @@ using Avalonia.Input;
 using FFmpegAvalonia.ViewModels;
 using Avalonia.Interactivity;
 using ExtensionMethods;
-using PCLUntils.IEnumerables;
 using System.Linq;
 using System;
 using Avalonia.ReactiveUI;
@@ -140,7 +139,7 @@ namespace FFmpegAvalonia.Views
         }
         private void TrimWindow_Opened(object? sender, EventArgs e)
         {
-            TimeCodeListBox.SelectedItem = TimeCodeListBox.Items.ElementAt(0);
+            ViewModel!.ListBoxSelectedItem = ViewModel!.ListBoxItems.First();
         }
         private void TimeCodeListBox_SelectionChanged(object? sender, SelectionChangedEventArgs e)
         {
