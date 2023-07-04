@@ -572,7 +572,7 @@ namespace FFmpegAvalonia.ViewModels
             {
                 result = await Updater.CheckForUpdatesGitAsync("FFmpegAvalonia",
                     assetIdentifier,
-                    "https://api.github.com/repos/Blitznir/FFmpegAvalonia/releases/latest",
+                    "https://api.github.com/repos/cybertron-cube/FFmpegAvalonia/releases/latest",
                     Assembly.GetExecutingAssembly().GetName().Version!.ToString(),
                     HttpClient!);
             }
@@ -580,7 +580,7 @@ namespace FFmpegAvalonia.ViewModels
             {
                 result = await Updater.CheckForUpdatesPreIncludeGitAsync("FFmpegAvalonia",
                     assetIdentifier,
-                    "https://api.github.com/repos/Blitznir/FFmpegAvalonia/releases?per_page=1",
+                    "https://api.github.com/repos/cybertron-cube/FFmpegAvalonia/releases?per_page=1",
                     Assembly.GetExecutingAssembly().GetName().Version!.ToString(),
                     HttpClient!);
             }
@@ -588,7 +588,7 @@ namespace FFmpegAvalonia.ViewModels
             {
                 result = await Updater.CheckForUpdatesGitAsync("FFmpegAvalonia",
                     assetIdentifier,
-                    "https://api.github.com/repos/Blitznir/FFmpegAvalonia/releases/latest",
+                    "https://api.github.com/repos/cybertron-cube/FFmpegAvalonia/releases/latest",
                     Assembly.GetExecutingAssembly().GetName().Version!.ToString(),
                     HttpClient!);
             }

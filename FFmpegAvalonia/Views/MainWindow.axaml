@@ -95,7 +95,7 @@
 			</MenuItem>
 			<MenuItem Header="_Help">
 				<MenuItem Header="_Check for updates" Command="{Binding	CheckForUpdatesCommand}"/>
-				<MenuItem Header="_Github" Command="{Binding OpenURLCommand}" CommandParameter="https://github.com/Blitznir/FFmpegAvalonia"/>
+				<MenuItem Header="_Github" Command="{Binding OpenURLCommand}" CommandParameter="https://github.com/cybertron-cube/FFmpegAvalonia"/>
 			</MenuItem>
 		</Menu>
 		
