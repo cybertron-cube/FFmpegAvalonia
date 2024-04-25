@@ -10,11 +10,14 @@ using ReactiveUI;
 using Avalonia;
 using System.Diagnostics;
 using System.Text;
+using Serilog;
 
 namespace FFmpegAvalonia.Views
 {
     public partial class TrimWindow : ReactiveWindow<TrimWindowViewModel>
     {
+        private readonly ILogger _log = Log.ForContext<TrimWindow>();
+        
         public TrimWindow()
         {
             InitializeComponent();
@@ -26,14 +29,15 @@ namespace FFmpegAvalonia.Views
             Opened += TrimWindow_Opened;
             this.WhenActivated(d => d(ViewModel!.SaveExit.Subscribe(Close)));
         }
+        
         private async void TimeCodeTextBox_PastingFromClipboard(object? sender, RoutedEventArgs e)
         {
-            TextBox textBox = (TextBox)e.Source!;
-            string pasteText = await Application.Current!.Clipboard!.GetTextAsync();
-            if (pasteText != null && ValidateChar(ref pasteText, textBox, out string manual))
+            var textBox = (TextBox)e.Source!;
+            var pasteText = await Application.Current!.Clipboard!.GetTextAsync();
+            if (ValidateChar(ref pasteText, textBox, out var manual))
             {
-                Trace.TraceInformation($"Pasting \"{pasteText}\" into {textBox.Name}");
-                if (manual != String.Empty)/////////////////////////////////////////////////////////////////////////////////
+                _log.Information("Pasting \"{PasteText}\" into {TextBoxName}", pasteText, textBox.Name);
+                if (manual != string.Empty)/////////////////////////////////////////////////////////////////////////////////
                 {
                     textBox.Text = manual;
                     textBox.CaretIndex = textBox.Text.Length;
@@ -44,11 +48,12 @@ namespace FFmpegAvalonia.Views
             }
             e.Handled = true;
         }
+        
         private static bool ValidateChar(ref string inputText, TextBox textBox, out string manual)
         {
-            manual = String.Empty;
+            manual = string.Empty;
             Debug.WriteLine(textBox.CaretIndex);
-            int selectionLength = Math.Abs(textBox.SelectionEnd - textBox.SelectionStart);
+            var selectionLength = Math.Abs(textBox.SelectionEnd - textBox.SelectionStart);
 
             if (selectionLength == 0 && inputText.Length > (TrimWindowViewModel.TextMaxLength - textBox.Text.Length))
             {
@@ -137,14 +142,17 @@ namespace FFmpegAvalonia.Views
             manual = manualSB.ToString();
             return true;
         }
+        
         private void TrimWindow_Opened(object? sender, EventArgs e)
         {
             ViewModel!.ListBoxSelectedItem = ViewModel!.ListBoxItems.First();
         }
+        
         private void TimeCodeListBox_SelectionChanged(object? sender, SelectionChangedEventArgs e)
         {
             StartTimeCodeTextBox.Focus();
         }
+        
         private void TextInputValidation(object? sender, TextInputEventArgs e)
         {
             TextBox textBox = (TextBox)sender!;

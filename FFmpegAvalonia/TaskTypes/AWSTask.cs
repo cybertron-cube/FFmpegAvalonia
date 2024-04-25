@@ -1,6 +1,5 @@
 ﻿using System;
 using System.IO;
-using System.Diagnostics;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Threading;
@@ -9,6 +8,7 @@ using Amazon.S3;
 using Amazon;
 using static Cybertron.GenStatic;
 using FFmpegAvalonia.Models;
+using Serilog;
 
 namespace FFmpegAvalonia.TaskTypes
 {
@@ -21,12 +21,14 @@ namespace FFmpegAvalonia.TaskTypes
         private string? _keyPrefix;
         private RegionEndpoint? _regionEndpoint;
         private IProgress<double>? _progress;
+        private readonly ILogger _log = Log.ForContext<AWSTask>();
+        
         public (bool, string) CheckConfigAndCredentials()
         {
-            string credentialsFilePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".aws", "credentials");
-            Trace.TraceInformation("Credentials Path: " + credentialsFilePath);
-            string configFilePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".aws", "config");
-            Trace.TraceInformation("Config Path: " + configFilePath);
+            var credentialsFilePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".aws", "credentials");
+            _log.Information("Credentials Path: {Path}", credentialsFilePath);
+            var configFilePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".aws", "config");
+            _log.Information("Config Path: {Path}", configFilePath);
 
             if (!File.Exists(credentialsFilePath) || !File.Exists(configFilePath))
             {

@@ -32,10 +32,7 @@ namespace FFmpegAvalonia.ViewModels
                 ListBoxSelectedItem!.StartTime = null;
                 ListBoxSelectedItem!.EndTime = null;
             }, removeCanExecute);
-            SaveExit = ReactiveCommand.Create<object?>(() =>
-            {
-                return true;
-            });
+            SaveExit = ReactiveCommand.Create<object?>(() => true);
         }
         public ReactiveCommand<Unit, Unit> SetTimeCodeValues { get; }
         public ReactiveCommand<Unit, Unit> RemoveTimeCodeValues { get; }

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AvaloniaProject">
+    <option name="projectPerEditor">
+      <map>
+        <entry key="FFmpegAvalonia/Views/MainWindow.axaml" value="FFmpegAvalonia/FFmpegAvalonia.csproj" />
+        <entry key="FFmpegAvalonia/Views/TextEditorWindow.axaml" value="FFmpegAvalonia/FFmpegAvalonia.csproj" />
+        <entry key="FFmpegAvalonia/Views/TrimWindow.axaml" value="FFmpegAvalonia/FFmpegAvalonia.csproj" />
+      </map>
+    </option>
+  </component>
+</project>

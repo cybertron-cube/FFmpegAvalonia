@@ -18,6 +18,7 @@ namespace FFmpegAvalonia.AppSettingsX
         private readonly string SettingsXMLPath = Path.Combine(AppContext.BaseDirectory, "settings.xml");
         private readonly string ProfilesXMLPath = Path.Combine(AppContext.BaseDirectory, "profiles.xml");
         private readonly bool IsLinux;
+        
         public AppSettings()
         {
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
@@ -51,16 +52,19 @@ namespace FFmpegAvalonia.AppSettingsX
                 };
             }
         }
+        
         public void ImportProfilesXML()
         {
             var text = File.ReadAllText(ProfilesXMLPath);
             ImportProfilesXML(ref text);
         }
+        
         public void ImportSettingsXML()
         {
             var text = File.ReadAllText(SettingsXMLPath);
             ImportSettingsXML(ref text);
         }
+        
         public string GetXMLText(string name)
         {
             Type type = Type.GetType(name, true);
@@ -74,6 +78,7 @@ namespace FFmpegAvalonia.AppSettingsX
             }
             else throw new ArgumentException(name);
         }
+        
         public void Save(string name, ref string text)
         {
             Type type = Type.GetType(name, true);
@@ -87,6 +92,7 @@ namespace FFmpegAvalonia.AppSettingsX
             }
             else throw new ArgumentException(name);
         }
+        
         private void ImportProfilesXML(ref string text)
         {
             XDocument doc = XDocument.Parse(text);
@@ -101,6 +107,7 @@ namespace FFmpegAvalonia.AppSettingsX
                 Profiles[profile.Name] = profile;
             }
         }
+        
         private void ImportSettingsXML(ref string text)
         {
             XDocument doc = XDocument.Parse(text);
@@ -125,6 +132,7 @@ namespace FFmpegAvalonia.AppSettingsX
                 }
             }
         }
+        
         private XElement GetProfilesXElement()
         {
             XElement result = new("Profiles", new XAttribute("AppVersion", Assembly.GetExecutingAssembly().GetName().Version!.ToString()));
@@ -140,6 +148,7 @@ namespace FFmpegAvalonia.AppSettingsX
             }
             return result;
         }
+        
         private XElement GetSettingsXElement()
         {
             XElement result = new("Settings", new XAttribute("AppVersion", Assembly.GetExecutingAssembly().GetName().Version!.ToString()));
@@ -150,111 +159,23 @@ namespace FFmpegAvalonia.AppSettingsX
             }
             return result;
         }
+        
         public void ExportProfilesXML()
         {
             GetProfilesXElement().Save(ProfilesXMLPath);
         }
+        
         public void ExportSettingsXML()
         {
             GetSettingsXElement().Save(SettingsXMLPath);
         }
+        
         public void Save()
         {
             ExportSettingsXML();
             ExportProfilesXML();
         }
-        public void ReadProfiles(string dir)
-        {
-            DirectoryInfo dirInfo = new(dir);
-            foreach (FileInfo file in dirInfo.GetFiles())
-            {
-                string profileName = file.GetNameWithoutExtension();
-                string args = "";
-                string ext = "";
-                string mo = "";
-                string dr = "";
-                //extract extension, datarate, arguments, and name of profile
-                var lines = File.ReadAllLines(file.FullName);
-                Trace.TraceInformation("name: " + profileName);
-                foreach (string line in lines)
-                {
-                    if (line.StartsWith("mo="))
-                    {
-                        mo = line.Split('=')[1].Trim();
-                    }
-                    if (line.StartsWith("dr="))
-                    {
-                        if (line.Contains("$mo"))
-                        {
-                            if (mo == "")
-                            {
-                                Trace.TraceInformation("ERROR: " + line);
-                                Trace.TraceInformation("ERROR: " + file.FullName);
-                                return;
-                            }
-                            else
-                            {
-                                dr += mo;
-                            }
-                        }
-                        else
-                        {
-                            dr = line.Split("=")[1].Trim();
-                        }
-                    }
-                    if (line.StartsWith("ffmpeg"))
-                    {
-                        //
-                        if (!line.Contains("$etn"))
-                        {
-                            Trace.TraceInformation("name: " + profileName);
-                            Trace.TraceInformation("args: " + args);
-                            Trace.TraceInformation("ext: " + ext);
-                            Trace.TraceInformation("mo: " + mo);
-                            Trace.TraceInformation("dr: " + dr);
-                            Trace.TraceInformation("ERROR: LINE DOES NOT CONTAIN $etn");
-                        }
-                        Trace.TraceInformation("ffmpeg line: " + line);
-                        //
-                        if (line.Contains(@"$dr"))
-                        {
-                            if (dr == "")
-                            {
-                                Trace.TraceInformation("ERROR: " + line);
-                                Trace.TraceInformation("ERROR: " + file.FullName);
-                                return;
-                            }
-                            else
-                            {
-                                Regex reg = new("(?:ffmpeg.*\\$etn\\s+)(?<args1>(?:(?!\\s+\\$).)*).*(?<dr>\\$dr)(?<args2>(?:(?!\\s+\\$).)*).*(?<ext>\\..*)");
-                                Match match = reg.Match(line);
-                                args = $"{match.Groups["args1"].Value.Trim()} {dr} {match.Groups["args2"].Value.Trim()}";
-                                ext = match.Groups["ext"].Value;
-                            }
-                        }
-                        else
-                        {
-                            Regex reg = new("(?:ffmpeg.*\\$etn\\s+)(?<args>(?:(?!\\s+\\$).)*).*(?<ext>\\..*)");
-                            Match match = reg.Match(line);
-                            args = match.Groups["args"].Value.Trim();
-                            ext = match.Groups["ext"].Value;
-                        }
-                    }
-                }
-                Trace.TraceInformation("args: " + args);
-                Trace.TraceInformation("ext: " + ext);
-                Trace.TraceInformation("mo: " + mo);
-                Trace.TraceInformation("dr: " + dr);
-                if (!string.IsNullOrEmpty(args) && !string.IsNullOrEmpty(ext) && !string.IsNullOrEmpty(profileName))
-                {
-                    Profiles.Add(profileName, new Profile() { Name = profileName, Arguments = args, OutputExtension = ext });
-                }
-                else
-                {
-                    Trace.TraceInformation("ERROR: Failed to parse file, " + file.FullName);
-                }
-            }
-        }
+        
         private void FindFFPath()
         {
             if (IsLinux)

@@ -24,11 +24,14 @@ using FFmpegAvalonia.TaskTypes;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia;
 using FFmpegAvalonia.Models;
+using Serilog;
 
 namespace FFmpegAvalonia.ViewModels
 {
     public class MainWindowViewModel : ReactiveValidationObject
     {
+        private readonly ILogger _log = Log.ForContext<MainWindowViewModel>();
+        
         public MainWindowViewModel(AppSettings appSettings)
         {
             #region Field/Property Initializers
@@ -219,14 +222,14 @@ namespace FFmpegAvalonia.ViewModels
             }
             TrimWindowViewModel trimWindowContext = new() { ListBoxItems = trimData };
             var result = await ShowTrimDialog.Handle(trimWindowContext);
-            Trace.TraceInformation("Trim Dialog Result: " + result);
+            _log.Information("Trim Dialog Result: {Result}", result);
             if (result)
             {
                 foreach (var item in trimData)
                 {
-                    Trace.TraceInformation("Name: " + item.FileInfo.FullName);
-                    Trace.TraceInformation("Start Time: " + item.StartTime?.FormattedString);
-                    Trace.TraceInformation("End Time: " + item.EndTime?.FormattedString);
+                    _log.Information("Name: {Name}", item.FileInfo.FullName);
+                    _log.Information("Start Time: {StartTime}", item.StartTime?.FormattedString);
+                    _log.Information("End Time: {EndTime}", item.EndTime?.FormattedString);
                 }
                 TaskListItems.Add(new ListViewData()
                 {
@@ -332,10 +335,8 @@ namespace FFmpegAvalonia.ViewModels
             }
             catch (Exception ex)
             {
-                Trace.TraceError($"An exception occurred in processing items task{Environment.NewLine}" +
-                    $"Exception = \"{ex}\"{Environment.NewLine}" +
-                    $"Task type = \"{CurrentItemInProgress?.Description.Task.ToString()}\"{Environment.NewLine}" +
-                    $"Cancel requested = \"{ct.IsCancellationRequested}\"");
+                _log.Error(ex, "An exception occurred in processing items task\nTask type = \"{Task}\"\nCancel requested = \"{CancelRequested}\"",
+                    CurrentItemInProgress?.Description.Task.ToString(), ct.IsCancellationRequested);
                 await ShowMessageBox.Handle(new MessageBoxParams
                 {
                     Title = "Exception",
@@ -347,7 +348,7 @@ namespace FFmpegAvalonia.ViewModels
             }
             if (response.Item1 == 0 && !ct.IsCancellationRequested) //Success
             {
-                Trace.TraceInformation("Queue completed");
+                _log.Information("Queue completed");
                 await ShowMessageBox.Handle(new MessageBoxParams
                 {
                     Title = "Queue Completed",
@@ -358,7 +359,7 @@ namespace FFmpegAvalonia.ViewModels
             }
             else if (response.Item1 == -1 && ct.IsCancellationRequested) //Queue stopped
             {
-                Trace.TraceInformation($"Queue was canceled on file \"{response.Item2}\"");
+                _log.Information("Queue was canceled on file \"{FilePath}\"", response.Item2);
                 await ShowMessageBox.Handle(new MessageBoxParams
                 {
                     Title = "Queue Canceled",
@@ -369,10 +370,10 @@ namespace FFmpegAvalonia.ViewModels
             }
             else
             {
-                Trace.TraceError($"Error code: {response.Item1}{Environment.NewLine}" +
-                    $"Response = \"{response.Item2}\"{Environment.NewLine}" +
-                    $"Task type = \"{CurrentItemInProgress?.Description.Task.ToString()}\"{Environment.NewLine}" +
-                    $"Cancel requested = \"{ct.IsCancellationRequested}\"");
+                _log.Error(
+                    "Error code: {ErrorCode}\nResponse = \"{Response}\"\nTask type = \"{Task}\"\nCancel requested = \"{CancelRequested}\"",
+                    response.Item1, response.Item2, CurrentItemInProgress?.Description.Task.ToString(),
+                    ct.IsCancellationRequested);
                 await ShowMessageBox.Handle(new MessageBoxParams
                 {
                     Title = "Error",
@@ -390,103 +391,106 @@ namespace FFmpegAvalonia.ViewModels
         }
         private async Task<(int, string)> ProcessTaskItems(CancellationToken ct)
         {
-            (int, string) response = (-100, "No response set");
-            foreach (ListViewData item in TaskListItems)
+            var response = (-100, "No response set");
+            foreach (var item in TaskListItems)
             {
                 await Dispatcher.UIThread.InvokeAsync(() =>
                 {
                     item.Description.FileCount = Directory.EnumerateFiles(item.Description.SourceDir, $"*{item.Description.FileExt}").Count();
                     CurrentItemInProgress = item;
                 });
+                
                 if (item.Description.FileCount == 0)
                 {
                     await Dispatcher.UIThread.InvokeAsync(() => item.Description.State = ItemState.Stopped);
                     return (-2, $"No files were detected within the source directory \"{item.Description.SourceDir}\" containing the extension \"{item.Description.FileExt}\"");
                 }
-                else await Dispatcher.UIThread.InvokeAsync(() => item.Description.State = ItemState.Progressing);
-                if (item.Description.Task == ItemTask.Transcode)
+
+                await Dispatcher.UIThread.InvokeAsync(() => item.Description.State = ItemState.Progressing);
+                
+                switch (item.Description.Task)
                 {
-                    FFmp = new FFmpeg(AppSettings.Settings.FFmpegPath);
-                    string progResult = FFmp.SetProgression(
-                        dir: item.Description.SourceDir,
-                        ext: item.Description.FileExt,
-                        args: item.Description.Profile.Arguments
-                    );
-                    Trace.TraceInformation(progResult);
-                    response = await FFmp.RunProfile(
-                        args: item.Description.Profile.Arguments,
-                        outputDir: item.Description.OutputDir,
-                        ext: item.Description.Profile.OutputExtension,
-                        progress: new Progress<double>(x => item.Progress = x),
-                        viewModel: this,
-                        ct: ct,
-                        detachProcess: AppSettings.Settings.DetachFFmpegProcess
-                    );
-                }
-                else if (item.Description.Task == ItemTask.Copy)
-                {
-                    Copier = new ProgressFileCopier(
-                        progress: new Progress<double>(x => item.Progress = x),
-                        item: item,
-                        viewModel: this
-                    );
-                    response = await Copier.CopyDirectory(
-                        sourceDir: item.Description.SourceDir,
-                        outputDir: item.Description.OutputDir,
-                        ext: '*' + item.Description.FileExt,
-                        ct: ct
-                    );
-                }
-                else if (item.Description.Task == ItemTask.Trim)
-                {
-                    FFmp = new FFmpeg(AppSettings.Settings.FFmpegPath);
-                    response = await FFmp.TrimDir(
-                        sourceDir: item.Description.SourceDir,
-                        outputDir: item.Description.OutputDir,
-                        trimData: item.Description.TrimData!,
-                        progress: new Progress<double>(x => item.Progress = x),
-                        item: item,
-                        viewModel: this,
-                        ct: ct,
-                        detachProcess: AppSettings.Settings.DetachFFmpegProcess
-                    );
-                }
-                else if (item.Description.Task == ItemTask.UploadAWS)
-                {
-                    response = await item.Description.AWS!.UploadDirectoryAsync(item,
-                        new Progress<double>(x => item.Progress = x),
-                        ct);
-                }
-                else if (item.Description.Task == ItemTask.Checksum)
-                {
-                    var hash = new Cybertron.Hashing();
-                    hash.OnNextFile += (fileName) =>
+                    case ItemTask.Transcode:
                     {
-                        item.Label = $"{fileName} ({item.Description.CurrentFileNumber}/{item.Description.FileCount})";
-                    };
-                    hash.OnCompleteFile += (filename) =>
-                    {
-                        item.Progress = ++item.Description.CurrentFileNumber / (double)item.Description.FileCount;
-                    };
-                    var hashResponse = await hash.DirectoryHashAsync(item.Description.SourceDir,
-                        Path.Combine(item.Description.OutputDir, "hash_list.txt"),
-                        $"*{item.Description.FileExt}",
-                        Cybertron.Hashing.HashingAlgorithmTypes.MD5,
-                        ct);
-                    item.Label = item.Label.Replace($"({item.Description.CurrentFileNumber - 1}/", $"({item.Description.CurrentFileNumber}/");
-                    if (hashResponse == "0")
-                    {
-                        response = (0, String.Empty);
+                        FFmp = new FFmpeg(AppSettings.Settings.FFmpegPath);
+                        string progResult = FFmp.SetProgression(
+                            dir: item.Description.SourceDir,
+                            ext: item.Description.FileExt
+                        );
+                        _log.Information("Progress Result: {ProgResult}", progResult);
+                        response = await FFmp.RunProfile(
+                            name: item.Description.Profile.Name,
+                            args: item.Description.Profile.Arguments,
+                            outputDir: item.Description.OutputDir,
+                            ext: item.Description.Profile.OutputExtension,
+                            progress: new Progress<double>(x => item.Progress = x),
+                            ct: ct,
+                            detachProcess: AppSettings.Settings.DetachFFmpegProcess
+                        );
+                        break;
                     }
-                    else
+                    case ItemTask.Copy:
+                        Copier = new ProgressFileCopier(
+                            progress: new Progress<double>(x => item.Progress = x),
+                            item: item,
+                            viewModel: this
+                        );
+                        response = await Copier.CopyDirectory(
+                            sourceDir: item.Description.SourceDir,
+                            outputDir: item.Description.OutputDir,
+                            ext: '*' + item.Description.FileExt,
+                            ct: ct
+                        );
+                        break;
+                    case ItemTask.Trim:
+                        FFmp = new FFmpeg(AppSettings.Settings.FFmpegPath);
+                        response = await FFmp.TrimDir(
+                            sourceDir: item.Description.SourceDir,
+                            outputDir: item.Description.OutputDir,
+                            trimData: item.Description.TrimData!,
+                            progress: new Progress<double>(x => item.Progress = x),
+                            item: item,
+                            ct: ct,
+                            detachProcess: AppSettings.Settings.DetachFFmpegProcess
+                        );
+                        break;
+                    case ItemTask.UploadAWS:
+                        response = await item.Description.AWS!.UploadDirectoryAsync(item,
+                            new Progress<double>(x => item.Progress = x),
+                            ct);
+                        break;
+                    case ItemTask.Checksum:
                     {
-                        response = (-1, hashResponse);
+                        var hash = new Cybertron.Hashing();
+                        hash.OnNextFile += (fileName) =>
+                        {
+                            item.Label = $"{fileName} ({item.Description.CurrentFileNumber}/{item.Description.FileCount})";
+                        };
+                        hash.OnCompleteFile += (filename) =>
+                        {
+                            item.Progress = ++item.Description.CurrentFileNumber / (double)item.Description.FileCount;
+                        };
+                        var hashResponse = await hash.DirectoryHashAsync(item.Description.SourceDir,
+                            Path.Combine(item.Description.OutputDir, "hash_list.txt"),
+                            $"*{item.Description.FileExt}",
+                            Cybertron.Hashing.HashingAlgorithmTypes.MD5,
+                            ct);
+                        item.Label = item.Label.Replace($"({item.Description.CurrentFileNumber - 1}/", $"({item.Description.CurrentFileNumber}/");
+                        if (hashResponse == "0")
+                        {
+                            response = (0, String.Empty);
+                        }
+                        else
+                        {
+                            response = (-1, hashResponse);
+                        }
+
+                        break;
                     }
+                    default:
+                        throw new Exception("Internal Item error: ItemTask enum not properly assigned to Type property of Item Description property");
                 }
-                else
-                {
-                    throw new Exception("Internal Item error: ItemTask enum not properly assigned to Type property of Item Description property");
-                }
+                
                 if (response.Item1 == 0)
                 {
                     await Dispatcher.UIThread.InvokeAsync(() =>
@@ -507,16 +511,17 @@ namespace FFmpegAvalonia.ViewModels
             }
             return response;
         }
+        
         private void StopQueue()
         {
-            Trace.TraceInformation("Stopping queue...");
-            Trace.TraceInformation("CurrentItemInProgress is null: " + (CurrentItemInProgress == null).ToString());
-            Trace.TraceInformation("CurrentItemInProgress Task: " + CurrentItemInProgress?.Description.Task.ToString());
+            _log.Information("Stopping queue...");
+            _log.Information("CurrentItemInProgress is null: {IsNull}", CurrentItemInProgress == null);
+            _log.Information("CurrentItemInProgress Task: {Task}", CurrentItemInProgress?.Description.Task);
         }
+        
         private async Task Editor(string controlName)
         {
-            string xml;
-            xml = AppSettings.GetXMLText(controlName);
+            var xml = AppSettings.GetXMLText(controlName);
             string? result = await ShowTextEditorDialog.Handle(xml);
             if (result != null)
             {
@@ -526,7 +531,7 @@ namespace FFmpegAvalonia.ViewModels
                 }
                 catch (Exception ex)
                 {
-                    Trace.TraceError(ex.ToString());
+                    _log.Error(ex, "");
                     await ShowMessageBox.Handle(new MessageBoxParams
                     {
                         Title = "Error",
@@ -537,9 +542,10 @@ namespace FFmpegAvalonia.ViewModels
                 }
             }
         }
+        
         private async Task CheckForUpdates(bool silent)
         {
-            Trace.TraceInformation("Checking for updates...");
+            _log.Information("Checking for updates...");
             string assetIdentifier;
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
@@ -562,12 +568,12 @@ namespace FFmpegAvalonia.ViewModels
                 else throw new Exception("OS Platform not supported");
             }
             else throw new Exception("OS Platform not supported");
-            Trace.TraceInformation($"Asset Identifier: {assetIdentifier}");
+            _log.Information("Asset Identifier: {AssetIdentifier}", assetIdentifier);
 
             //catch exceptions
             Updater.CheckUpdateResult result;
-            Trace.TraceInformation($"Update Target: {AppSettings.Settings.UpdateTarget}");
-            Trace.TraceInformation($"Current Version: {Assembly.GetExecutingAssembly().GetName().Version}");
+            _log.Information("Update Target: {Target}", AppSettings.Settings.UpdateTarget);
+            _log.Information("Current Version: {Version}", Assembly.GetExecutingAssembly().GetName().Version);
             if (AppSettings.Settings.UpdateTarget == "release")
             {
                 result = await Updater.CheckForUpdatesGitAsync("FFmpegAvalonia",
@@ -592,8 +598,8 @@ namespace FFmpegAvalonia.ViewModels
                     Assembly.GetExecutingAssembly().GetName().Version!.ToString(),
                     HttpClient!);
             }
-            Trace.TraceInformation($"Result: {result.UpdateAvailable}");
-            Trace.TraceInformation($"Result Version: {result.Version}");
+            _log.Information("Result: {UpdateAvailable}", result.UpdateAvailable);
+            _log.Information("Result Version: {Version}", result.Version);
 
             if (result.UpdateAvailable)
             {
@@ -619,23 +625,23 @@ namespace FFmpegAvalonia.ViewModels
                     {
                         FileName = updaterProcessPath,
                     };
-                    Trace.TraceInformation($"Updater Path: {updaterProcessPath}");
-                    Trace.TraceInformation($"This Process Path: {thisProcessPath}");
+                    _log.Information("Updater Path: {Path}", updaterProcessPath);
+                    _log.Information("This Process Path: {Path}", thisProcessPath);
                     processStartInfo.ArgumentList.Add(result.DownloadLink);
-                    Trace.TraceInformation(result.DownloadLink);
+                    _log.Information("Download link: {DL}", result.DownloadLink);
                     processStartInfo.ArgumentList.Add(AppContext.BaseDirectory);
-                    Trace.TraceInformation(AppContext.BaseDirectory);
+                    _log.Information("Base Directory: {Dir}", AppContext.BaseDirectory);
                     processStartInfo.ArgumentList.Add(thisProcessPath);
-                    Trace.TraceInformation(thisProcessPath);
+                    _log.Information("This process path: {Path}", thisProcessPath);
                     processStartInfo.ArgumentList.Add("profiles.xml");
                     processStartInfo.ArgumentList.Add("settings.xml");
-                    Trace.TraceInformation("Starting updater");
+                    _log.Information("Starting updater");
                     Process.Start(processStartInfo);
                     ExitApp();
                 }
                 else
                 {
-                    Trace.TraceInformation("Update canceled");
+                    _log.Information("Update canceled");
                 }
             }
             else if (!silent)
@@ -649,6 +655,7 @@ namespace FFmpegAvalonia.ViewModels
                 });
             }
         }
+        
         private void OpenURL(string url)
         {
             try
@@ -673,6 +680,7 @@ namespace FFmpegAvalonia.ViewModels
                 else throw;
             }
         }
+        
         public void ExitApp(EventArgs? e = null)
         {
             if (e == null)
@@ -685,11 +693,12 @@ namespace FFmpegAvalonia.ViewModels
             {
                 Task.Run(async () => { await StopQueueCommand.Execute(); }).Wait();
             }
-            Trace.TraceInformation("Saving settings...");
+            _log.Information("Saving settings...");
             AppSettings.Settings.AutoOverwriteCheck = AutoOverwriteCheck;
             AppSettings.Save();
-            Trace.TraceInformation("Exiting...");
+            _log.Information("Exiting...");
         }
+        
         private readonly HttpClient _httpClient = new();
         public HttpClient HttpClient => _httpClient;
         private FFmpeg? _fFmp;

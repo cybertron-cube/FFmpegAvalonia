@@ -1,14 +1,18 @@
 ﻿using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.IO;
+using Serilog;
 
 namespace FFmpegAvalonia.TaskTypes
 {
     public class FFmpegProcess : Process
     {
+        public bool HasStarted { get; private set; }
         private readonly string _FFmpegPath;
         private readonly string FFmpeg;
         private readonly string FFprobe;
+        private readonly ILogger _log = Log.ForContext<FFmpegProcess>();
+        
         public FFmpegProcess(string ffMpegDir)
         {
             _FFmpegPath = ffMpegDir;
@@ -36,8 +40,9 @@ namespace FFmpegAvalonia.TaskTypes
             StartInfo.FileName = Path.Combine(_FFmpegPath, ffProc);
             StartInfo.Arguments = args;
             Start();
-            Trace.TraceInformation(ffProc + " " + args);
-            Trace.TraceInformation("Process ID: " + Id);
+            HasStarted = true;
+            _log.Information(ffProc + " " + args);
+            _log.Information("Process ID: " + Id);
         }
     }
 }

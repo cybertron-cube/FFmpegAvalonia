@@ -7,8 +7,6 @@ using System.Diagnostics;
 using System.Threading.Tasks;
 using System.Text.RegularExpressions;
 using System.Collections.ObjectModel;
-using System.IO;
-using Path = System.IO.Path;
 using Avalonia.Layout;
 using System.Reflection;
 using System.Linq;
@@ -21,31 +19,24 @@ using FFmpegAvalonia.Views;
 using System.Reactive.Linq;
 using AvaloniaMessageBox;
 using FFmpegAvalonia.Models;
+using Serilog;
+using Splat;
+using ILogger = Serilog.ILogger;
 
 namespace FFmpegAvalonia
 {
     public partial class MainWindow : ReactiveWindow<MainWindowViewModel>
     {
-        public AppSettings AppSettings = new();
         public new MainWindowViewModel ViewModel;
+        private readonly AppSettings _appSettings;
         private bool _confirmShutdown;
+        private readonly ILogger _log = Log.ForContext<MainWindow>();
+        
         public MainWindow()
         {
-            FileInfo logPath = new(Path.Combine(AppContext.BaseDirectory, "debug.log"));
-            if (logPath.Exists && logPath.Length > 20971520)
-            {
-                logPath.Delete();
-            }
-            TextWriterTraceListener textWriter = new(logPath.FullName);
-            ConsoleTraceListener listener = new()
-            {
-                Writer = textWriter.Writer,
-                TraceOutputOptions = TraceOptions.DateTime
-            };
-            Trace.Listeners.Add(listener);
-            Trace.AutoFlush = true;
             InitializeComponent();
-            ViewModel = new(AppSettings);
+            _appSettings = Locator.Current.GetService<AppSettings>()!;
+            ViewModel = new MainWindowViewModel(_appSettings);
             DataContext = ViewModel;
             this.WhenActivated(d =>
             {
@@ -71,6 +62,7 @@ namespace FFmpegAvalonia
             }
 #endif
         }
+        
         private async void MainWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
         {
             if (_confirmShutdown) return;
@@ -85,12 +77,11 @@ namespace FFmpegAvalonia
                 StartupLocation = WindowStartupLocation.CenterOwner
             });
             var result = await msgBox.ShowDialog(this);
-            if (result == MessageBoxResult.Yes)
-            {
-                _confirmShutdown = true;
-                this.Close();
-            }
+            if (result != MessageBoxResult.Yes) return;
+            _confirmShutdown = true;
+            Close();
         }
+        
         private async Task DoShowTextEditorDialogAsync(InteractionContext<string, string?> interaction)
         {
             var dialog = new TextEditorWindow();
@@ -98,6 +89,7 @@ namespace FFmpegAvalonia
             var result = await dialog.ShowDialog<string?>(this);
             interaction.SetOutput(result);
         }
+        
         private async Task DoShowTrimDialogAsync(InteractionContext<TrimWindowViewModel, bool> interaction)
         {
             TrimWindow dialog = new()
@@ -107,12 +99,14 @@ namespace FFmpegAvalonia
             var result = await dialog.ShowDialog<bool>(this);
             interaction.SetOutput(result);
         }
+        
         private async Task DoShowMessageBoxAsync(InteractionContext<MessageBoxParams, MessageBoxResult> interaction)
         {
             var msgBox = MessageBox.GetMessageBox(interaction.Input);
             var result = await msgBox.ShowDialog(this);
             interaction.SetOutput(result);
         }
+        
         private void DragOver(object sender, DragEventArgs e)
         {
             Debug.WriteLine("DragOver");
@@ -122,6 +116,7 @@ namespace FFmpegAvalonia
             if (!e.Data.Contains(DataFormats.Text) && !e.Data.Contains(DataFormats.FileNames))
                 e.DragEffects = DragDropEffects.None;
         }
+        
         private void Drop(object sender, DragEventArgs e)
         {
             Debug.WriteLine("Drop");
@@ -135,7 +130,7 @@ namespace FFmpegAvalonia
             }
             catch (Exception ex)
             {
-                Trace.TraceError(ex.Message);
+                _log.Error(ex.Message);
                 return;
             }
             if (e.Data.Contains(DataFormats.Text))
@@ -143,6 +138,7 @@ namespace FFmpegAvalonia
             else if (e.Data.Contains(DataFormats.FileNames) && e.Data.GetFileNames()!.Count() == 1)
                 textBox.Text = string.Join(Environment.NewLine, e.Data.GetFileNames()!);
         }
+        
         private void Task_SelectionChanged(object? sender, SelectionChangedEventArgs e) //this can be done a better way
         {
             ItemTask itemTask = (ItemTask)e.AddedItems[0];
@@ -186,12 +182,13 @@ namespace FFmpegAvalonia
                 }
             }
         }
+        
         private async void MainWindow_Opened(object? sender, EventArgs e)
         {
-            Trace.TraceInformation("Main Window Opened");
+            _log.Information("Main Window Opened");
             ViewModel.SelectedTaskType = ItemTask.Copy; //fixes error popup not showing when switching to transcode
-            ViewModel.AutoOverwriteCheck = AppSettings.Settings.AutoOverwriteCheck;
-            if (AppSettings.Settings.FFmpegPath == String.Empty)
+            ViewModel.AutoOverwriteCheck = _appSettings.Settings.AutoOverwriteCheck;
+            if (_appSettings.Settings.FFmpegPath == String.Empty)
             {
                 var msgBoxError = MessageBox.GetMessageBox(new MessageBoxParams
                 {
@@ -207,7 +204,7 @@ namespace FFmpegAvalonia
                     var path = await dialog.ShowAsync(this);
                     if (path is not null)
                     {
-                        AppSettings.Settings.FFmpegPath = path;
+                        _appSettings.Settings.FFmpegPath = path;
                     }
                     else
                     {
@@ -219,9 +216,9 @@ namespace FFmpegAvalonia
                     this.Close();
                 }
             }
-            if (AppSettings.Settings.CheckUpdateOnStart)
+            if (_appSettings.Settings.CheckUpdateOnStart)
             {
-                Trace.TraceInformation("CheckUpdateOnStart enabled");
+                _log.Information("CheckUpdateOnStart enabled");
                 await ViewModel.CheckForUpdatesCommand.Execute(true);
             }
 #if DEBUG
@@ -233,10 +230,12 @@ namespace FFmpegAvalonia
             testButton.Click += Test_Click!;
 #endif
         }
+        
         private void MenuItemClose_Click(object? sender, RoutedEventArgs e)
         {
             this.Close();
         }
+        
         private async void Browse_Click(object sender, RoutedEventArgs e)
         {
             var control = e.Source as Control;
@@ -248,6 +247,7 @@ namespace FFmpegAvalonia
                 textBox.Text = result;
             }
         }
+        
         private async void ListViewItem_Remove(object sender, RoutedEventArgs e) //BIND ENABLED INSTEAD
         {
             if (ViewModel.IsQueueRunning)
@@ -268,6 +268,7 @@ namespace FFmpegAvalonia
                 ViewModel.TaskListItems.Remove(data);
             }
         }
+        
 #if DEBUG
         private void Test_Click(object sender, RoutedEventArgs e)
         {
@@ -278,6 +279,7 @@ namespace FFmpegAvalonia
             Debug.WriteLine("TEST");
         }
 #endif
+        
         private async void ListViewItem_Edit(object sender, RoutedEventArgs e) //BIND ENABLED INSTEAD
         {
             if (ViewModel.IsQueueRunning) { return; }
@@ -302,9 +304,9 @@ namespace FFmpegAvalonia
                     data.Description.TrimData = newCollection;
                     foreach (var item in data.Description.TrimData!)
                     {
-                        Trace.TraceInformation("Name: " + item.FileInfo.FullName);
-                        Trace.TraceInformation("Start Time: " + item.StartTime?.FormattedString);
-                        Trace.TraceInformation("End Time: " + item.EndTime?.FormattedString);
+                        _log.Information("Name: " + item.FileInfo.FullName);
+                        _log.Information("Start Time: " + item.StartTime?.FormattedString);
+                        _log.Information("End Time: " + item.EndTime?.FormattedString);
                     }
                 }
             }
