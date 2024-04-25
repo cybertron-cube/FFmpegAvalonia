@@ -293,10 +293,13 @@ namespace FFmpegAvalonia.TaskTypes
             int charRead;
             while ((charRead = await stream.ReadAsync(buffer, 0, buffer.Length)) > 0)
             {
-                _log.Verbose("[{StreamName}] Chars Read: {Chars} | Buffer Length: {Length}", name, charRead, buffer.Length);
                 if (charRead >= buffer.Length * 0.8)
                 {
                     _log.Warning("[{StreamName}] Buffer is approaching overflow -> Chars Read: {Chars} | Buffer Length: {Length}", name, charRead, buffer.Length);
+                }
+                else
+                {
+                    _log.Information("[{StreamName}] Chars Read: {Chars} | Buffer Length: {Length}", name, charRead, buffer.Length);
                 }
             
                 for (int i = 0; i < charRead; i++)
