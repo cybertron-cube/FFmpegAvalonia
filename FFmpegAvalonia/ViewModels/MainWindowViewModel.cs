@@ -407,12 +407,12 @@ namespace FFmpegAvalonia.ViewModels
                 if (item.Description.Task == ItemTask.Transcode)
                 {
                     FFmp = new FFmpeg(AppSettings.Settings.FFmpegPath);
-                    string frameResult = FFmp.GetFrameCountApproximate(
+                    string progResult = FFmp.SetProgression(
                         dir: item.Description.SourceDir,
-                        searchPattern: '*' + item.Description.FileExt,
+                        ext: item.Description.FileExt,
                         args: item.Description.Profile.Arguments
                     );
-                    Trace.TraceInformation(frameResult);
+                    Trace.TraceInformation(progResult);
                     response = await FFmp.RunProfile(
                         args: item.Description.Profile.Arguments,
                         outputDir: item.Description.OutputDir,
@@ -462,14 +462,18 @@ namespace FFmpegAvalonia.ViewModels
                     var hash = new Cybertron.Hashing();
                     hash.OnNextFile += (fileName) =>
                     {
-                        item.Progress = item.Description.CurrentFileNumber++ / (double)item.Description.FileCount;
                         item.Label = $"{fileName} ({item.Description.CurrentFileNumber}/{item.Description.FileCount})";
+                    };
+                    hash.OnCompleteFile += (filename) =>
+                    {
+                        item.Progress = ++item.Description.CurrentFileNumber / (double)item.Description.FileCount;
                     };
                     var hashResponse = await hash.DirectoryHashAsync(item.Description.SourceDir,
                         Path.Combine(item.Description.OutputDir, "hash_list.txt"),
                         $"*{item.Description.FileExt}",
                         Cybertron.Hashing.HashingAlgorithmTypes.MD5,
                         ct);
+                    item.Label = item.Label.Replace($"({item.Description.CurrentFileNumber - 1}/", $"({item.Description.CurrentFileNumber}/");
                     if (hashResponse == "0")
                     {
                         response = (0, String.Empty);
@@ -568,7 +572,7 @@ namespace FFmpegAvalonia.ViewModels
             {
                 result = await Updater.CheckForUpdatesGitAsync("FFmpegAvalonia",
                     assetIdentifier,
-                    "https://api.github.com/repos/Blitznir/FFmpegAvalonia/releases/latest",
+                    "https://api.github.com/repos/cybertron-cube/FFmpegAvalonia/releases/latest",
                     Assembly.GetExecutingAssembly().GetName().Version!.ToString(),
                     HttpClient!);
             }
@@ -576,7 +580,7 @@ namespace FFmpegAvalonia.ViewModels
             {
                 result = await Updater.CheckForUpdatesPreIncludeGitAsync("FFmpegAvalonia",
                     assetIdentifier,
-                    "https://api.github.com/repos/Blitznir/FFmpegAvalonia/releases?per_page=1",
+                    "https://api.github.com/repos/cybertron-cube/FFmpegAvalonia/releases?per_page=1",
                     Assembly.GetExecutingAssembly().GetName().Version!.ToString(),
                     HttpClient!);
             }
@@ -584,7 +588,7 @@ namespace FFmpegAvalonia.ViewModels
             {
                 result = await Updater.CheckForUpdatesGitAsync("FFmpegAvalonia",
                     assetIdentifier,
-                    "https://api.github.com/repos/Blitznir/FFmpegAvalonia/releases/latest",
+                    "https://api.github.com/repos/cybertron-cube/FFmpegAvalonia/releases/latest",
                     Assembly.GetExecutingAssembly().GetName().Version!.ToString(),
                     HttpClient!);
             }

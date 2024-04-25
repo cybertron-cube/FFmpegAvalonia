@@ -13,7 +13,6 @@ using ExtensionMethods;
 using System.Threading;
 using FFmpegAvalonia.ViewModels;
 using System.Collections.ObjectModel;
-using PCLUntils.IEnumerables;
 using System.Linq;
 using FFmpegAvalonia.Models;
 
@@ -21,6 +20,7 @@ namespace FFmpegAvalonia.TaskTypes
 {
     public class FFmpeg
     {
+        private bool _audioFile = false;
         private FFmpegProcess _ffProcess;
         private readonly string _ffMpegPath;
         private readonly ConcurrentDictionary<string, int> _filesDict;
@@ -79,6 +79,43 @@ namespace FFmpegAvalonia.TaskTypes
                 };
             }
         }
+        public string SetProgression(string dir, string ext, string args)
+        {
+            if (HashMaps.FileFormats.TryGetValue(ext.ToLower(), out string? type) && type == "audio")
+            {
+                _audioFile = true;
+                return GetDuration(dir, '*' + ext);
+            }
+            else
+            {
+                return GetFrameCountApproximate(dir, '*' + ext, args);
+            }
+        }
+        public string GetDuration(string dir, string searchPattern)
+        {
+            NewFFProcess();
+            var dirInfo = new DirectoryInfo(dir);
+            var files = dirInfo.EnumerateFiles(searchPattern);
+            var sb = new StringBuilder();
+            foreach (var file in files)
+            {
+                sb.Append(file.FullName);
+
+                _ffProcess.StartProbe($"-v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 \"{file.FullName}\"");
+                decimal totalSeconds = decimal.Parse(_ffProcess.StandardOutput.ReadToEnd().Trim());
+                int totalSecondsRound = Convert.ToInt32(totalSeconds);
+
+                Trace.TraceInformation("Total Seconds: " + totalSeconds);
+                _ffProcess.WaitForExit();
+
+                Trace.TraceInformation("Process Exit Code: " + _ffProcess.ExitCode);
+
+                _filesDict.TryAdd(file.FullName, totalSecondsRound);
+                sb.Append(" -- " + totalSecondsRound + Environment.NewLine);
+            }
+            _ffProcess.Dispose();
+            return sb.ToString();
+        }
         public string GetFrameCountApproximate(string dir, string searchPattern, string args)
         {
             bool skipFrameRateCalc = false;
@@ -107,8 +144,9 @@ namespace FFmpegAvalonia.TaskTypes
                 if (!skipFrameRateCalc)
                 {
                     _ffProcess.StartProbe($"-v 0 -of csv=p=0 -select_streams v:0 -show_entries stream=r_frame_rate \"{file.FullName}\"");
-                    string output = _ffProcess.StandardOutput.ReadToEnd().Trim();
-                    frameRate = decimal.Parse(output.Split(@"/")[0]) / decimal.Parse(output.Split(@"/")[1]);
+                    string[] outputLines = _ffProcess.StandardOutput.ReadToEnd().Split(Environment.NewLine);
+                    var firstLineFrameRate = outputLines[0].Trim().Split(@"/");
+                    frameRate = decimal.Parse(firstLineFrameRate[0]) / decimal.Parse(firstLineFrameRate[1]);
 
                     Trace.TraceInformation("Framerate: " + frameRate);
                     _ffProcess.WaitForExit();
@@ -186,7 +224,15 @@ namespace FFmpegAvalonia.TaskTypes
                 NewFFProcess(detachProcess);
                 if (!detachProcess)
                 {
-                    _ffProcess.OutputDataReceived += new DataReceivedEventHandler(StdOutHandler);
+                    if (_audioFile)
+                    {
+                        _ffProcess.OutputDataReceived += new DataReceivedEventHandler(StdOutHandlerTimeProg);
+                        _endTime = _filesDict[filePath];
+                    }
+                    else
+                    {
+                        _ffProcess.OutputDataReceived += new DataReceivedEventHandler(StdOutHandlerFrameProg);
+                    }
                 }
                 if (ct.IsCancellationRequested)
                 {
@@ -217,7 +263,8 @@ namespace FFmpegAvalonia.TaskTypes
                     _ffProcess.BeginOutputReadLine();
                     try
                     {
-                        await ReadStdErr(ct); 
+                        await ReadStdErr(ct);
+                        await _ffProcess.WaitForExitAsync();
                     }
                     catch (TaskCanceledException taskCanceledExc)
                     {
@@ -307,7 +354,7 @@ namespace FFmpegAvalonia.TaskTypes
             Trace.TraceInformation($"Starting trim to {outputDir} from {sourceDir}");
             foreach (TrimData data in trimDataValidTimeCodes)
             {
-                _endTime = (double)data.EndTime!.Value * 1000;
+                _endTime = data.EndTime!.GetTotalSeconds();
                 if (detachProcess)
                     Trace.TraceInformation("Creating detached ffmpeg process");
                 else
@@ -315,7 +362,7 @@ namespace FFmpegAvalonia.TaskTypes
                 NewFFProcess(detachProcess);
                 if (!detachProcess)
                 {
-                    _ffProcess.OutputDataReceived += new DataReceivedEventHandler(TrimStdOutHandler); 
+                    _ffProcess.OutputDataReceived += new DataReceivedEventHandler(StdOutHandlerTimeProg); 
                 }
                 if (ct.IsCancellationRequested)
                 {
@@ -355,7 +402,8 @@ namespace FFmpegAvalonia.TaskTypes
                     _ffProcess.BeginOutputReadLine();
                     try
                     {
-                        await ReadStdErr(ct); 
+                        await ReadStdErr(ct);
+                        await _ffProcess.WaitForExitAsync();
                     }
                     catch (TaskCanceledException taskCanceledExc)
                     {
@@ -535,7 +583,7 @@ namespace FFmpegAvalonia.TaskTypes
                 }
             }
         }
-        private void StdOutHandler(object sendingProcess, DataReceivedEventArgs e)
+        private void StdOutHandlerFrameProg(object sendingProcess, DataReceivedEventArgs e)
         {
             if (e.Data != null)
             {
@@ -555,14 +603,14 @@ namespace FFmpegAvalonia.TaskTypes
                 }
             }
         }
-        private void TrimStdOutHandler(object sendingProcess, DataReceivedEventArgs e)
+        private void StdOutHandlerTimeProg(object sendingProcess, DataReceivedEventArgs e)
         {
             if (e.Data != null)
             {
                 Trace.TraceInformation("STDOUT**--" + e.Data);
                 if (e.Data.Contains("out_time="))
                 {
-                    double currentTime = double.Parse(e.Data.Split("=")[1].Replace(":", "").Replace(".", ""));
+                    double currentTime = TimeCode.GetTotalSeconds(e.Data.Split('=')[1].Replace("-", ""));
                     Trace.TraceInformation($"Progress: {currentTime} (current time) / {_endTime} (end time)");
                     _uIProgress!.Report(currentTime / _endTime);
                 }

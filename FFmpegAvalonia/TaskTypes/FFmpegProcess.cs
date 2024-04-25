@@ -12,15 +12,15 @@ namespace FFmpegAvalonia.TaskTypes
         public FFmpegProcess(string ffMpegDir)
         {
             _FFmpegPath = ffMpegDir;
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-            {
-                FFmpeg = "ffmpeg";
-                FFprobe = "ffprobe";
-            }
-            else
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
                 FFmpeg = "ffmpeg.exe";
                 FFprobe = "ffprobe.exe";
+            }
+            else
+            {
+                FFmpeg = "ffmpeg";
+                FFprobe = "ffprobe";
             }
         }
         public void StartMpeg(string args)

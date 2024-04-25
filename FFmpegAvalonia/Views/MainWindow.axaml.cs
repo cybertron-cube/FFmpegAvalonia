@@ -10,7 +10,6 @@ using System.Collections.ObjectModel;
 using System.IO;
 using Path = System.IO.Path;
 using Avalonia.Layout;
-using PCLUntils.IEnumerables;
 using System.Reflection;
 using System.Linq;
 using FFmpegAvalonia.ViewModels;
@@ -146,7 +145,7 @@ namespace FFmpegAvalonia
         }
         private void Task_SelectionChanged(object? sender, SelectionChangedEventArgs e) //this can be done a better way
         {
-            ItemTask itemTask = (ItemTask)e.AddedItems.ElementAt(0);
+            ItemTask itemTask = (ItemTask)e.AddedItems[0];
 
             if (itemTask == ItemTask.Transcode)
             {

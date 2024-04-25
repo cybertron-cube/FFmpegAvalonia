@@ -101,6 +101,16 @@ namespace FFmpegAvalonia
                 PadTimeCodeUnit(milliseconds, 3));
             _value = ToInt(_formattedString);
         }
+        public double GetTotalSeconds()
+        {
+            return _hours * 3600 + _minutes * 60 + _seconds + (double)_milliseconds / 1000;
+        }
+        public static double GetTotalSeconds(string timecode)
+        {
+            return Convert.ToInt16(timecode[0..2]) * 3600
+                + Convert.ToInt16(timecode[3..5]) * 60
+                + Convert.ToDouble(timecode[6..12]);
+        }
         /// <summary>
         /// Creates a new <see cref="TimeCode"/> object from a string
         /// </summary>
