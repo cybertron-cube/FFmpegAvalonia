@@ -307,9 +307,9 @@ namespace FFmpegAvalonia.TaskTypes
             
                 for (int i = 0; i < charRead; i++)
                 {
-                    if (buffer[i] == '\n')
+                    if (buffer[i] == '\n' || buffer[i] == '\r')
                     {
-                        var line = buffer[i - 1] == '\r' ? sb.ToStringTrimEnd("\r") : sb.ToString();
+                        var line = buffer[i] == '\n' ? sb.ToStringTrimEnd("\n") : sb.ToStringTrimEnd("\r");
                         sb.Clear();
                         _log.Information("{Data}", line);
                         onNewLine?.Invoke(line);
@@ -319,6 +319,11 @@ namespace FFmpegAvalonia.TaskTypes
                         sb.Append(buffer[i]);
                     }
                 }
+                
+                if (sb.Length > 4096)
+                {
+                    _log.Warning("StringBuilder length exceeding 4096 characters");
+                }
             }
         }
 
@@ -327,9 +332,20 @@ namespace FFmpegAvalonia.TaskTypes
             // EX: out_time_ms=659434000
             if (line.Contains("out_time_us"))
             {
-                // Ignore the last 3 characters since for some reason ffmpeg outputs microseconds instead of milliseconds
-                var currentTimeMs = Convert.ToDouble(line.Split('=')[1][..^3]);
+                // Read milliseconds since for some reason ffmpeg outputs microseconds instead of milliseconds
+                // for out_time_ms
+                double currentTimeMs;
+                try
+                {
+                    currentTimeMs = Convert.ToDouble(line.Split('=')[1][..^3]);
+                }
+                catch (Exception e)
+                {
+                    _log.Warning(e, "Could not extract out time ms from line: \"{Line}\"", line);
+                    return;
+                }
                 if (currentTimeMs < 0) return;
+                
                 var currentTimeSeconds = currentTimeMs / 1000;
                 _currentDirTimeSeconds += currentTimeSeconds;
                 _uiProgress?.Report(_currentDirTimeSeconds / _totalDirTimeSeconds);
@@ -345,9 +361,20 @@ namespace FFmpegAvalonia.TaskTypes
             // EX: out_time_ms=659434000
             if (line.Contains("out_time_us"))
             {
-                // Ignore the last 3 characters since for some reason ffmpeg outputs microseconds instead of milliseconds
-                var currentTimeMs = Convert.ToDouble(line.Split('=')[1][..^3]);
+                // Read milliseconds since for some reason ffmpeg outputs microseconds instead of milliseconds
+                // for out_time_ms
+                double currentTimeMs;
+                try
+                {
+                    currentTimeMs = Convert.ToDouble(line.Split('=')[1][..^3]);
+                }
+                catch (Exception e)
+                {
+                    _log.Warning(e, "Could not extract out time ms from line: \"{Line}\"", line);
+                    return;
+                }
                 if (currentTimeMs < 0) return;
+                
                 var progress = currentTimeMs / _endTime;
                 _uiProgress?.Report(progress);
             }

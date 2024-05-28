@@ -119,7 +119,7 @@ namespace ExtensionMethods
         }
         public static string ToStringTrimEnd(this StringBuilder sb, string trimEnd)
         {
-            return sb.ToString(0, sb.Length - trimEnd.Length);
+            return sb.EndsWith(trimEnd) ? sb.ToString(0, sb.Length - trimEnd.Length) : sb.ToString();
         }
         public static bool ParseToBool(this string str)
         {
