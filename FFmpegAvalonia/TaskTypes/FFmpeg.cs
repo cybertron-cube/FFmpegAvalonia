@@ -10,6 +10,7 @@ using System.Threading;
 using System.Linq;
 using FFmpegAvalonia.Models;
 using Serilog;
+using Serilog.Context;
 
 namespace FFmpegAvalonia.TaskTypes
 {
@@ -288,6 +289,8 @@ namespace FFmpegAvalonia.TaskTypes
         
         private async Task ReadStreamAsync(StreamReader stream, string name, Action<string>? onNewLine = null)
         {
+            using var logContext = LogContext.PushProperty("StreamName", name);
+            
             var buffer = new char[4096];
             var sb = new StringBuilder();
             int charRead;
@@ -295,11 +298,11 @@ namespace FFmpegAvalonia.TaskTypes
             {
                 if (charRead >= buffer.Length * 0.8)
                 {
-                    _log.Warning("[{StreamName}] Buffer is approaching overflow -> Chars Read: {Chars} | Buffer Length: {Length}", name, charRead, buffer.Length);
+                    _log.Warning("Buffer is approaching overflow -> Chars Read: {Chars} | Buffer Length: {Length}", charRead, buffer.Length);
                 }
                 else
                 {
-                    _log.Information("[{StreamName}] Chars Read: {Chars} | Buffer Length: {Length}", name, charRead, buffer.Length);
+                    _log.Information("Chars Read: {Chars} | Buffer Length: {Length}", charRead, buffer.Length);
                 }
             
                 for (int i = 0; i < charRead; i++)
@@ -308,7 +311,7 @@ namespace FFmpegAvalonia.TaskTypes
                     {
                         var line = buffer[i - 1] == '\r' ? sb.ToStringTrimEnd("\r") : sb.ToString();
                         sb.Clear();
-                        _log.Information("[{StreamName}] {Data}", name, line);
+                        _log.Information("{Data}", line);
                         onNewLine?.Invoke(line);
                     }
                     else
