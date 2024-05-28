@@ -55,6 +55,7 @@ namespace FFmpegAvalonia.TaskTypes
             //Start out having progress bar show prog of entire dir
             //Progress would be current progress plus the sum of the files already done
             _uiProgress = progress;
+            _currentDirTimeSeconds = 0;
             _log.Information("Starting transcode to {OutputDir}", outputDir);
             foreach (var filePath in _filesDict.Keys)
             {
@@ -122,6 +123,9 @@ namespace FFmpegAvalonia.TaskTypes
                 }
 
                 DisposeFFProcess();
+
+                _currentDirTimeSeconds += _filesDict[filePath];
+                
                 _log.Information("File transcode, \"{FilePath}\", complete", filePath);
             }
             
@@ -347,8 +351,7 @@ namespace FFmpegAvalonia.TaskTypes
                 if (currentTimeMs < 0) return;
                 
                 var currentTimeSeconds = currentTimeMs / 1000;
-                _currentDirTimeSeconds += currentTimeSeconds;
-                _uiProgress?.Report(_currentDirTimeSeconds / _totalDirTimeSeconds);
+                _uiProgress?.Report((currentTimeSeconds + _currentDirTimeSeconds) / _totalDirTimeSeconds);
             }
             else if (line.Contains("progress=end"))
             {
