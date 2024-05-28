@@ -325,7 +325,7 @@ namespace FFmpegAvalonia.TaskTypes
         private void OnNewLineStandardOutputProfile(string line)
         {
             // EX: out_time_ms=659434000
-            if (line.Contains("out_time_ms"))
+            if (line.Contains("out_time_us"))
             {
                 // Ignore the last 3 characters since for some reason ffmpeg outputs microseconds instead of milliseconds
                 var currentTimeMs = Convert.ToDouble(line.Split('=')[1][..^3]);
@@ -343,7 +343,7 @@ namespace FFmpegAvalonia.TaskTypes
         private void OnNewLineStandardOutputTrim(string line)
         {
             // EX: out_time_ms=659434000
-            if (line.Contains("out_time_ms"))
+            if (line.Contains("out_time_us"))
             {
                 // Ignore the last 3 characters since for some reason ffmpeg outputs microseconds instead of milliseconds
                 var currentTimeMs = Convert.ToDouble(line.Split('=')[1][..^3]);
