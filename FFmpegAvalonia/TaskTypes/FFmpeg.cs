@@ -313,7 +313,7 @@ namespace FFmpegAvalonia.TaskTypes
                 {
                     if (buffer[i] == '\n' || buffer[i] == '\r')
                     {
-                        var line = buffer[i] == '\n' ? sb.ToStringTrimEnd("\n") : sb.ToStringTrimEnd("\r");
+                        var line = buffer[i] == '\n' ? Extensions.ToStringTrimEnd(sb, "\n") : Extensions.ToStringTrimEnd(sb, "\r");
                         sb.Clear();
                         _log.Information("{Data}", line);
                         onNewLine?.Invoke(line);
