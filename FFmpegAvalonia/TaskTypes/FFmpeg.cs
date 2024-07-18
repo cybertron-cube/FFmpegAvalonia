@@ -176,7 +176,7 @@ namespace FFmpegAvalonia.TaskTypes
                     Extensions.AppendFileName(data.FileInfo.FullName, "_trimmed")
                     : Path.Combine(outputDir, data.FileInfo.Name);
                 
-                _ffProcess.StartMpeg($"-progress pipe:1 -y -ss {data.StartTime!.FormattedString} -to {data.EndTime.FormattedString} -i \"{data.FileInfo.FullName}\" -map 0 -codec copy \"{newFile}\"");
+                _ffProcess.StartMpeg($"-progress pipe:1 -y -ss {data.StartTime!.FormattedString} -to {data.EndTime.FormattedString} -i \"{data.FileInfo.FullName}\" -map 0 -c:v copy -c:a copy \"{newFile}\"");
                 
                 if (detachProcess)
                 {
