@@ -121,6 +121,19 @@ namespace ExtensionMethods
         {
             return sb.EndsWith(trimEnd) ? sb.ToString(0, sb.Length - trimEnd.Length) : sb.ToString();
         }
+        public static string ReplaceLastOccurrence(string source, string oldValue, string newValue, StringComparison stringComparison = StringComparison.Ordinal)
+        {
+            var place = source.LastIndexOf(oldValue, stringComparison);
+            return place == -1 ? source : source.Remove(place, oldValue.Length).Insert(place, newValue);
+        }
+        public static void AppendFileName(ref string filePath, string appendage)
+        {
+            filePath = ReplaceLastOccurrence(filePath, Path.GetFileName(filePath), $"{Path.GetFileNameWithoutExtension(filePath)}{appendage}{Path.GetExtension(filePath)}");
+        }
+        public static string AppendFileName(string filePath, string appendage)
+        {
+            return ReplaceLastOccurrence(filePath, Path.GetFileName(filePath), $"{Path.GetFileNameWithoutExtension(filePath)}{appendage}{Path.GetExtension(filePath)}");
+        }
         public static bool ParseToBool(this string str)
         {
             return str.ToLower() switch

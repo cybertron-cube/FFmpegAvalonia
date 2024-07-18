@@ -140,7 +140,7 @@ namespace FFmpegAvalonia.TaskTypes
         public async Task<(int, string)> TrimDir(IEnumerable<TrimData> trimData, string sourceDir, string outputDir, IProgress<double> progress, ListViewData item, CancellationToken ct, bool detachProcess = false)
         {
             _uiProgress = progress;
-            var overwrite = outputDir == string.Empty || sourceDir == outputDir;
+            var inOutEqual = outputDir == string.Empty || sourceDir == outputDir;
             
             var trimDataValidTimeCodes = trimData.Where(x => x.StartTime is not null && x.EndTime is not null);
             await Dispatcher.UIThread.InvokeAsync(() =>
@@ -172,8 +172,8 @@ namespace FFmpegAvalonia.TaskTypes
                     return (-1, data.FileInfo.FullName);
                 }
 
-                var newFile = overwrite ?
-                    Path.Combine(data.FileInfo.Directory.FullName, $"_{data.FileInfo.Name}")
+                var newFile = inOutEqual ?
+                    Extensions.AppendFileName(data.FileInfo.FullName, "_trimmed")
                     : Path.Combine(outputDir, data.FileInfo.Name);
                 
                 _ffProcess.StartMpeg($"-progress pipe:1 -y -ss {data.StartTime!.FormattedString} -to {data.EndTime.FormattedString} -i \"{data.FileInfo.FullName}\" -map 0 -codec copy \"{newFile}\"");
@@ -222,13 +222,7 @@ namespace FFmpegAvalonia.TaskTypes
                     return (-1, data.FileInfo.FullName);
                 }
 
-                if (_ffProcess.ExitCode == 0 && overwrite)
-                {
-                    var rename = data.FileInfo.FullName;
-                    data.FileInfo.Delete();
-                    File.Move(newFile, rename);
-                }
-                else if (_ffProcess.ExitCode != 0)
+                if (_ffProcess.ExitCode != 0)
                 {
                     var exitCode = _ffProcess.ExitCode;
                     DisposeFFProcess();
